@@ -12,7 +12,7 @@ return new class extends Migration {
             $table->foreignId('ame_id')->constrained()->cascadeOnDelete();
             $table->foreignId('parcours_spirituel_id')->constrained()->cascadeOnDelete();
             $table->foreignId('valide_par')->nullable()->constrained('users')->nullOnDelete();
-            $table->date('date_validation')->nullable();
+            $table->date('date_validation')->nullable(); // ← ajouter nullable()
             $table->text('commentaires')->nullable();
             $table->timestamps();
 

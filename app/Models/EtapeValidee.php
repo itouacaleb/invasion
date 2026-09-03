@@ -1,4 +1,5 @@
 <?php
+// app/Models/EtapeValidee.php
 
 namespace App\Models;
 
@@ -6,7 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class EtapeValidee extends Model
 {
-    protected $fillable = ['ame_id', 'parcours_spirituel_id', 'valide_par', 'date_validation'];
+    protected $fillable = [
+        'ame_id',
+        'parcours_spirituel_id',
+        'valide_par',
+        'date_validation',
+        'commentaires',   // ← manquait
+    ];
 
     public function ame()
     {

@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\EtapeValidee;
 use App\Models\Ame;
-use App\Models\ParcoursSpirituel;
-use App\Models\User;
+use App\Models\EtapeValidee;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -15,9 +13,8 @@ class EtapeValideeController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = EtapeValidee::query();
+            $query = EtapeValidee::with(['ame', 'parcours', 'validateur']);
 
-            // Filtres
             if ($request->has('ame_id')) {
                 $query->where('ame_id', $request->ame_id);
             }
@@ -28,10 +25,7 @@ class EtapeValideeController extends Controller
                 $query->where('valide_par', $request->valide_par);
             }
             if ($request->has('start_date') && $request->has('end_date')) {
-                $query->whereBetween('date_validation', [
-                    $request->start_date,
-                    $request->end_date
-                ]);
+                $query->whereBetween('date_validation', [$request->start_date, $request->end_date]);
             }
 
             $etapes = $query->get();
@@ -42,10 +36,12 @@ class EtapeValideeController extends Controller
                 'data' => $etapes,
             ], 200);
         } catch (Exception $e) {
+            // 🔍 On retourne le message d'erreur exact pour déboguer
             return response()->json([
                 'status' => false,
                 'message' => 'Erreur lors de la récupération des étapes validées',
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(), // ← on ajoute la trace
                 'data' => [],
             ], 500);
         }

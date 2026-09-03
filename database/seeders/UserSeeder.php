@@ -15,132 +15,170 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Désactiver temporairement les contraintes de clé étrangère
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
-        // Méthode optimale pour vider la table
-        User::query()->delete();
+        User::truncate();
 
-        // Réactiver les contraintes
         DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
-        // Création des utilisateurs de base
         $users = [
-             [
-                'nom' => 'Itoua caleb',
+
+            [
+                'nom' => 'Itoua Caleb',
                 'email' => 'yvescalebitoua@gmail.com',
-                'password' => Hash::make('alexandre'),
                 'telephone' => '068731172',
+                'password' => Hash::make('alexandre'),
                 'role' => 'admin',
                 'zone_id' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+
             [
                 'nom' => 'Jean Okombi',
                 'email' => 'okombi@example.com',
+                'telephone' => '064512345',
                 'password' => Hash::make('Admin@123'),
-                'telephone' => '242064512345',
                 'role' => 'admin',
                 'zone_id' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+
             [
                 'nom' => 'Pasteur Nkounkou',
                 'email' => 'nkounkou@example.com',
+                'telephone' => '065523456',
                 'password' => Hash::make('Encadreur@123'),
-                'telephone' => '242065523456',
                 'role' => 'encadreur',
-                'zone_id' => 1, // Bacongo
+                'zone_id' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+
             [
                 'nom' => 'Frère Mbemba',
                 'email' => 'mbemba@example.com',
+                'telephone' => '066534567',
                 'password' => Hash::make('Encadreur@123'),
-                'telephone' => '242066534567',
                 'role' => 'encadreur',
-                'zone_id' => 2, // Poto-Poto
+                'zone_id' => 2,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+
             [
                 'nom' => 'Soeur Loubaki',
                 'email' => 'loubaki@example.com',
+                'telephone' => '067545678',
                 'password' => Hash::make('Evangeliste@123'),
-                'telephone' => '242067545678',
                 'role' => 'evangeliste',
-                'zone_id' => 1, // Bacongo
+                'zone_id' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+
             [
                 'nom' => 'David Matsiona',
                 'email' => 'matsiona@example.com',
+                'telephone' => '068556789',
                 'password' => Hash::make('Evangeliste@123'),
-                'telephone' => '242068556789',
                 'role' => 'evangeliste',
-                'zone_id' => 2, // Poto-Poto
+                'zone_id' => 2,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+
             [
                 'nom' => 'Sarah Bouanga',
                 'email' => 'bouanga@example.com',
+                'telephone' => '069567890',
                 'password' => Hash::make('Evangeliste@123'),
-                'telephone' => '242069567890',
                 'role' => 'evangeliste',
-                'zone_id' => 3, // Talangaï
+                'zone_id' => 3,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+
             [
                 'nom' => 'Pasteur Itoua',
                 'email' => 'itoua@example.com',
+                'telephone' => '060578901',
                 'password' => Hash::make('Encadreur@123'),
-                'telephone' => '242060578901',
                 'role' => 'encadreur',
-                'zone_id' => 3, // Talangaï
+                'zone_id' => 3,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+
         ];
 
-        // Insertion avec gestion des doublons
         foreach ($users as $user) {
-            User::updateOrCreate(
-                ['email' => $user['email']],
-                $user
-            );
+
+            User::create($user);
+
         }
 
-        // Optionnel: Création d'utilisateurs supplémentaires sans factory
         $this->createAdditionalUsers(10);
     }
 
     /**
-     * Crée des utilisateurs supplémentaires
+     * Création d'utilisateurs supplémentaires
      */
     protected function createAdditionalUsers(int $count): void
     {
-        $roles = ['evangeliste', 'encadreur'];
-        $zones = [1, 2, 3];
+        $prenoms = [
+            'Jean',
+            'Marie',
+            'Pierre',
+            'Paul',
+            'Jacques',
+            'Lucie',
+            'Ange',
+            'David'
+        ];
 
-        for ($i = 0; $i < $count; $i++) {
-            $firstName = ['Jean', 'Marie', 'Pierre', 'Paul', 'Jacques', 'Lucie', 'Ange', 'David'][array_rand(['Jean', 'Marie', 'Pierre', 'Paul', 'Jacques', 'Lucie', 'Ange', 'David'])];
-            $lastName = ['Okombi', 'Nkounkou', 'Mbemba', 'Loubaki', 'Matsiona', 'Bouanga', 'Itoua', 'Kimbangu'][array_rand(['Okombi', 'Nkounkou', 'Mbemba', 'Loubaki', 'Matsiona', 'Bouanga', 'Itoua', 'Kimbangu'])];
+        $noms = [
+            'Okombi',
+            'Nkounkou',
+            'Mbemba',
+            'Loubaki',
+            'Matsiona',
+            'Bouanga',
+            'Itoua',
+            'Kimbangu'
+        ];
+
+        $roles = [
+            'evangeliste',
+            'encadreur'
+        ];
+
+        $zones = [1,2,3];
+
+        for ($i = 1; $i <= $count; $i++) {
+
+            $prenom = $prenoms[array_rand($prenoms)];
+            $nom = $noms[array_rand($noms)];
 
             User::create([
-                'nom' => $firstName . ' ' . $lastName,
-                'email' => Str::lower($firstName) . '.' . Str::lower($lastName) . ($i + 1) . '@example.com',
-                'password' => Hash::make('Password' . ($i + 1)),
-                'telephone' => '24206' . rand(1000000, 9999999),
+
+                'nom' => $prenom.' '.$nom,
+
+                'email' => strtolower($prenom).'.'.strtolower($nom).$i.'@example.com',
+
+                'telephone' => '061'.str_pad($i,6,'0',STR_PAD_LEFT),
+
+                'password' => Hash::make('Password123'),
+
                 'role' => $roles[array_rand($roles)],
+
                 'zone_id' => $zones[array_rand($zones)],
+
                 'created_at' => now(),
+
                 'updated_at' => now(),
+
             ]);
         }
     }

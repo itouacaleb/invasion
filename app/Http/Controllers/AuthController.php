@@ -11,21 +11,30 @@ use Illuminate\Support\Facades\Validator;
 class AuthController extends Controller
 {
     /**
-     * Enregistrement d'un nouvel utilisateur
+     * Enregistrement
      */
     public function register(Request $request)
     {
         try {
+
             $validator = Validator::make($request->all(), [
+
                 'nom' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users',
+
+                'telephone' => 'required|string|max:20|unique:users',
+
+                'email' => 'nullable|email|max:255|unique:users',
+
                 'password' => 'required|string|min:8',
-                'telephone' => 'nullable|string|max:20',
+
                 'role' => 'required|in:evangeliste,encadreur,admin',
+
                 'zone_id' => 'nullable|exists:zones,id',
+
             ]);
 
             if ($validator->fails()) {
+
                 return response()->json([
                     'status' => false,
                     'message' => 'Erreur de validation',
@@ -34,12 +43,19 @@ class AuthController extends Controller
             }
 
             $user = User::create([
+
                 'nom' => $request->nom,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
+
                 'telephone' => $request->telephone,
+
+                'email' => $request->email,
+
+                'password' => Hash::make($request->password),
+
                 'role' => $request->role,
+
                 'zone_id' => $request->zone_id,
+
             ]);
 
             $token = $user->createToken('auth_token')->plainTextToken;
@@ -53,6 +69,7 @@ class AuthController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Erreur lors de l\'enregistrement',
@@ -62,25 +79,42 @@ class AuthController extends Controller
     }
 
     /**
-     * ZOne controller public
-
-     */
-
-
-    /**
-     * Connexion d'un utilisateur
+     * Connexion
      */
     public function login(Request $request)
     {
         try {
-            if (!Auth::attempt($request->only('email', 'password'))) {
+
+            $validator = Validator::make($request->all(), [
+
+                'telephone' => 'required|string',
+
+                'password' => 'required|string',
+
+            ]);
+
+            if ($validator->fails()) {
+
                 return response()->json([
                     'status' => false,
-                    'message' => 'Identifiants invalides'
+                    'message' => 'Erreur de validation',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            if (!Auth::attempt([
+                'telephone' => $request->telephone,
+                'password' => $request->password
+            ])) {
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Numéro de téléphone ou mot de passe incorrect.'
                 ], 401);
             }
 
-            $user = User::where('email', $request->email)->firstOrFail();
+            $user = User::where('telephone', $request->telephone)->firstOrFail();
+
             $token = $user->createToken('auth_token')->plainTextToken;
 
             return response()->json([
@@ -92,6 +126,7 @@ class AuthController extends Controller
             ]);
 
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Erreur lors de la connexion',
@@ -101,50 +136,57 @@ class AuthController extends Controller
     }
 
     /**
-     * *Modifié mot de passe
+     * Réinitialisation du mot de passe
      */
     public function resetPassword(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'email' => 'required|email|exists:users,email',
-        'new_password' => 'required|string|min:8|confirmed',
-    ]);
+    {
+        $validator = Validator::make($request->all(), [
 
-    if ($validator->fails()) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Erreur de validation',
-            'errors' => $validator->errors(),
-        ], 422);
-    }
+            'telephone' => 'required|exists:users,telephone',
 
-    try {
-        $user = User::where('email', $request->email)->first();
+            'new_password' => 'required|string|min:8|confirmed',
 
-        $user->password = Hash::make($request->new_password);
-        $user->save();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Mot de passe mis à jour avec succès.',
         ]);
 
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Erreur lors de la mise à jour du mot de passe',
-            'error' => $e->getMessage()
-        ], 500);
-    }
-}
+        if ($validator->fails()) {
 
+            return response()->json([
+                'status' => false,
+                'message' => 'Erreur de validation',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+
+            $user = User::where('telephone', $request->telephone)->first();
+
+            $user->password = Hash::make($request->new_password);
+
+            $user->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Mot de passe mis à jour avec succès.'
+            ]);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Erreur lors de la mise à jour',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
     /**
-     * Déconnexion de l'utilisateur
+     * Déconnexion
      */
     public function logout(Request $request)
     {
         try {
+
             $request->user()->tokens()->delete();
 
             return response()->json([
@@ -153,6 +195,7 @@ class AuthController extends Controller
             ]);
 
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Erreur lors de la déconnexion',
