@@ -13,7 +13,8 @@ use App\Http\Controllers\{
     StatistiqueController,
     UserController,
     ZoneController,
-    TacheController
+    TacheController,
+    DashboardController
 };
 use Illuminate\Http\Request;
 
@@ -68,6 +69,8 @@ Route::prefix('v1')->group(function () {
         Route::prefix('cartes')->group(function () {
             Route::get('ames-par-zone', [AmeController::class, 'cartesData']);
         });
+         // ✅ Dashboard (une seule route pour tout)
+    Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index']);
 
         Route::prefix('rapports')->group(function () {
             Route::get('fidelisation', [StatistiqueController::class, 'fidelisation']);
