@@ -71,8 +71,8 @@ class ParcoursSpirituelSeeder extends Seeder
             ],
         ];
 
-        // ✅ Vider la table avant d'insérer (évite les doublons)
-        DB::table('parcours_spirituels')->truncate();
+        // ✅ Supprimer les données existantes (DELETE au lieu de TRUNCATE)
+        DB::table('parcours_spirituels')->delete();
         
         // ✅ Insérer les données
         DB::table('parcours_spirituels')->insert($parcours);
