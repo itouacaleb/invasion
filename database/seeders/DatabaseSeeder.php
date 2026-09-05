@@ -2,11 +2,6 @@
 
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-
-use App\Models\Cellule;
-use App\Models\Interaction;
-use App\Models\ParcoursSpirituel;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -14,21 +9,21 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      */
-public function run()
-{
-    $this->call([
-        ZoneSeeder::class,
-        UserSeeder::class,
-        CampagneSeeder::class,
-        CelluleSeeder::class,
-        AmeSeeder::class,
-        ParcoursSpirituelSeeder::class,
-        InteractionSeeder::class,
-        EtapeValideeSeeder::class,
-        NotificationSeeder::class,
-        StatistiqueSeeder::class,
-        RoleSeeder::class,
-    ]);
-}
-
+    public function run(): void
+    {
+        $this->call([
+            ZoneSeeder::class,           // 1. Zones
+            UserSeeder::class,           // 2. Utilisateurs
+            CampagneSeeder::class,       // 3. Campagne
+            CelluleSeeder::class,        // 4. Cellules
+            AmeSeeder::class,            // 5. Âmes
+            ParcoursSpirituelSeeder::class, // 6. Parcours spirituels
+            StatistiqueSeeder::class,    // 7. Statistiques (après les âmes)
+            InteractionSeeder::class,    // 8. Interactions
+            EtapeValideeSeeder::class,   // 9. Étapes validées
+            TacheSeeder::class,          // 10. Tâches (manquant !)
+            NotificationSeeder::class,   // 11. Notifications
+            RoleSeeder::class,           // 12. Rôles (optionnel)
+        ]);
+    }
 }

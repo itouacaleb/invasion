@@ -6,6 +6,7 @@ use App\Models\Statistique;
 use App\Models\Tache;
 use App\Models\Campagne;
 use App\Models\Interaction;
+use App\Models\Ame;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,24 +22,27 @@ class DashboardController extends Controller
             $user = Auth::user();
             $userId = $user ? $user->id : null;
 
-            // 1. Statistiques (dernière entrée)
+            // 1. Dernière statistique
             $statistique = Statistique::with('campagne')
                 ->orderBy('date_generation', 'desc')
                 ->first();
 
-            // 2. Total des âmes depuis les statistiques
-            $totalAmes = Statistique::sum('total_ames') ?? 0;
+            // 2. Total des âmes depuis la table ames (comptage réel)
+            $totalAmes = Ame::count();
 
-            // 3. Baptêmes depuis les statistiques
-            $baptemes = Statistique::sum('baptises') ?? 0;
+            // 3. Baptêmes depuis la table ames
+            $baptemes = Ame::where('type_decision', 'Première décision')->count();
 
-            // 4. Nouvelles âmes depuis les statistiques
-            $nouvellesAmes = Statistique::sum('nouvelles_ames') ?? 0;
+            // 4. Nouvelles âmes depuis la table ames
+            $nouvellesAmes = Ame::where('type_decision', 'Première décision')->count();
 
-            // 5. Visites (interactions de type 'visite')
+            // 5. Fidélisés depuis la table ames
+            $fidelises = Ame::where('suivi', true)->count();
+
+            // 6. Visites (interactions de type 'visite')
             $visites = Interaction::where('type', 'visite')->count();
 
-            // 6. Tâches en cours (pour l'utilisateur connecté)
+            // 7. Tâches en cours (pour l'utilisateur connecté)
             $tachesEnCours = 0;
             $tachesRecentes = [];
             if ($userId) {
@@ -67,7 +71,7 @@ class DashboardController extends Controller
                     });
             }
 
-            // 7. Campagnes en cours
+            // 8. Campagnes en cours
             $campagnes = Campagne::with(['zone', 'ames'])
                 ->where(function ($query) {
                     $query->where('date_fin', '>=', now())
@@ -88,10 +92,10 @@ class DashboardController extends Controller
                     ];
                 });
 
-            // 8. Statistiques hebdomadaires (pour les graphiques)
+            // 9. Statistiques hebdomadaires (pour les graphiques)
             $hebdomadaires = $this->getStatsHebdomadaires();
 
-            // 9. Statistiques mensuelles (pour les graphiques)
+            // 10. Statistiques mensuelles (pour les graphiques)
             $mensuelles = $this->getStatsMensuelles();
 
             return response()->json([
@@ -101,6 +105,7 @@ class DashboardController extends Controller
                     'statistiques' => [
                         'total_ames' => $totalAmes,
                         'baptemes' => $baptemes,
+                        'fidelises' => $fidelises,
                         'nouvelles_ames' => $nouvellesAmes,
                         'derniere_statistique' => $statistique,
                     ],
