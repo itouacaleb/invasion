@@ -16,6 +16,12 @@ class AmeController extends Controller
         try {
             $query = Ame::query();
 
+            // ✅ Filtrer par encadreur si l'utilisateur n'est pas admin
+            $user = auth()->user();
+            if ($user->role !== 'admin') {
+                $query->where('assigne_a', $user->id);
+            }
+
             if ($request->has('campagne_id')) {
                 $query->where('campagne_id', $request->campagne_id);
             }
@@ -45,6 +51,7 @@ class AmeController extends Controller
             ], 500);
         }
     }
+
     public function store(Request $request)
     {
         try {
@@ -55,11 +62,10 @@ class AmeController extends Controller
                 'sexe' => 'required|in:H,F',
                 'age' => 'nullable|integer|min:0',
                 'adresse' => 'nullable|string',
-                'image' => 'nullable|string', // Accepte soit URL soit chemin
+                'image' => 'nullable|string',
                 'image_file' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
                 'suivi' => 'boolean',
                 'derniere_interaction' => 'nullable|date',
-
                 'date_conversion' => 'nullable|date',
                 'campagne_id' => 'required|exists:campagnes,id',
                 'type_decision' => 'nullable|string',
@@ -77,7 +83,6 @@ class AmeController extends Controller
                 ], 422);
             }
 
-            // Vérification date conversion
             $campagne = Campagne::find($request->campagne_id);
             if (
                 $request->date_conversion &&
@@ -90,18 +95,15 @@ class AmeController extends Controller
                 ], 422);
             }
 
-            // Gestion de l'image
             $data = $request->all();
 
             if ($request->hasFile('image_file')) {
                 $path = $request->file('image_file')->store('images/ames', 'public');
                 $data['image'] = $path;
             } elseif ($request->filled('image')) {
-                // Si image est fourni directement (URL)
                 $data['image'] = $request->image;
             }
 
-            // Suppression des champs temporaires
             unset($data['image_file']);
 
             $ame = Ame::create($data);
@@ -119,15 +121,21 @@ class AmeController extends Controller
             ], 500);
         }
     }
+
     public function recentes(Request $request)
     {
         try {
-            // Récupère la limite facultative dans la requête, sinon 10 par défaut
             $limit = $request->get('limit', 10);
 
-            $ames = Ame::orderBy('created_at', 'desc')
-                ->take($limit)
-                ->get();
+            $query = Ame::orderBy('created_at', 'desc');
+
+            // ✅ Filtrer par encadreur si l'utilisateur n'est pas admin
+            $user = auth()->user();
+            if ($user->role !== 'admin') {
+                $query->where('assigne_a', $user->id);
+            }
+
+            $ames = $query->take($limit)->get();
 
             return response()->json([
                 'status' => true,
@@ -148,6 +156,16 @@ class AmeController extends Controller
     {
         try {
             $ame = Ame::findOrFail($id);
+
+            // ✅ Vérifier que l'utilisateur a accès à cette âme
+            $user = auth()->user();
+            if ($user->role !== 'admin' && $ame->assigne_a != $user->id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Vous n\'avez pas accès à cette âme',
+                    'data' => [],
+                ], 403);
+            }
 
             return response()->json([
                 'status' => true,
@@ -185,10 +203,9 @@ class AmeController extends Controller
                 'longitude' => 'nullable|numeric|between:-180,180',
                 'assigne_a' => 'nullable|exists:users,id',
                 'cellule_id' => 'nullable|exists:cellules,id',
-                'suivi' => 'boolean', // 👈 ajouté
-                'derniere_interaction' => 'nullable|date', // 👈 ajouté
+                'suivi' => 'boolean',
+                'derniere_interaction' => 'nullable|date',
             ]);
-
 
             if ($validator->fails()) {
                 return response()->json([
@@ -201,23 +218,19 @@ class AmeController extends Controller
 
             $data = $validator->validated();
 
-            // Gestion de l'image
             if ($request->hasFile('image_file')) {
-                // Supprimer l'ancienne image si elle existe et est locale
                 if ($ame->image && !filter_var($ame->image, FILTER_VALIDATE_URL)) {
                     Storage::disk('public')->delete($ame->image);
                 }
                 $path = $request->file('image_file')->store('images/ames', 'public');
                 $data['image'] = $path;
             } elseif ($request->filled('image_url')) {
-                // Supprimer l'ancienne image si elle existe et est locale
                 if ($ame->image && !filter_var($ame->image, FILTER_VALIDATE_URL)) {
                     Storage::disk('public')->delete($ame->image);
                 }
                 $data['image'] = $request->image_url;
             }
 
-            // Supprimer les champs temporaires
             unset($data['image_file']);
             unset($data['image_url']);
 
