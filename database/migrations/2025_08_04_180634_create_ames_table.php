@@ -11,9 +11,10 @@ return new class extends Migration {
             $table->id();
             $table->string('nom');
             $table->string('telephone')->nullable();
-            $table->string('image')->nullable(); // ligne à ajouter
-            $table->boolean('suivi')->default(false); // Pour le badge "Suivi"
-            $table->date('derniere_interaction')->nullable(); // Pour afficher "Dernière interaction"
+            $table->string('email')->nullable(); // ✅ AJOUTER CETTE LIGNE
+            $table->string('image')->nullable();
+            $table->boolean('suivi')->default(false);
+            $table->date('derniere_interaction')->nullable();
 
             $table->enum('sexe', ['H', 'F']);
             $table->integer('age')->nullable();

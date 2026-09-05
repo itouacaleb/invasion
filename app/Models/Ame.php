@@ -9,25 +9,24 @@ class Ame extends Model
 {
     use HasFactory;
 
-    // Dans app/Models/Ame.php
-protected $fillable = [
-    'nom',
-    'telephone',
-    'sexe',
-    'age',
-    'adresse',
-    'date_conversion',
-    'campagne_id',
-    'type_decision',
-    'latitude',
-    'longitude',
-    'assigne_a',
-    'cellule_id',
-    'image',
-    'suivi', // 👈 ajouté
-    'derniere_interaction', // 👈 ajouté
-];
-
+    protected $fillable = [
+        'nom',
+        'telephone',
+        'email', // ✅ AJOUTER CETTE LIGNE
+        'sexe',
+        'age',
+        'adresse',
+        'date_conversion',
+        'campagne_id',
+        'type_decision',
+        'latitude',
+        'longitude',
+        'assigne_a',
+        'cellule_id',
+        'image',
+        'suivi',
+        'derniere_interaction',
+    ];
 
     protected $casts = [
         'date_conversion' => 'date',
@@ -35,8 +34,7 @@ protected $fillable = [
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
         'derniere_interaction' => 'date',
-'suivi' => 'boolean',
-
+        'suivi' => 'boolean',
     ];
 
     protected $with = ['campagne', 'encadreur', 'cellule'];
@@ -50,11 +48,11 @@ protected $fillable = [
     {
         return $this->belongsTo(User::class, 'assigne_a');
     }
+
     public function getImageUrlAttribute()
     {
         return $this->image ? asset('storage/' . $this->image) : null;
     }
-
 
     public function cellule()
     {

@@ -51,6 +51,7 @@ class AmeController extends Controller
             $validator = Validator::make($request->all(), [
                 'nom' => 'required|string|max:255',
                 'telephone' => 'nullable|string|max:20',
+                'email' => 'nullable|email|max:255',
                 'sexe' => 'required|in:H,F',
                 'age' => 'nullable|integer|min:0',
                 'adresse' => 'nullable|string',
@@ -171,6 +172,7 @@ class AmeController extends Controller
             $validator = Validator::make($request->all(), [
                 'nom' => 'required|string|max:255',
                 'telephone' => 'nullable|string|max:20',
+                'email' => 'nullable|email|max:255',
                 'sexe' => 'required|in:H,F',
                 'age' => 'nullable|integer|min:0',
                 'adresse' => 'nullable|string',
