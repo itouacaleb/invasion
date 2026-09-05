@@ -27,16 +27,16 @@ class DashboardController extends Controller
                 ->orderBy('date_generation', 'desc')
                 ->first();
 
-            // 2. Total des âmes depuis la table ames (comptage réel)
+            // 2. Total des âmes (comptage réel)
             $totalAmes = Ame::count();
 
-            // 3. Baptêmes depuis la table ames
-            $baptemes = Ame::where('type_decision', 'Première décision')->count();
+            // 3. Baptêmes (depuis la table statistiques)
+            $baptemes = Statistique::sum('baptises') ?? 0;
 
-            // 4. Nouvelles âmes depuis la table ames
-            $nouvellesAmes = Ame::where('type_decision', 'Première décision')->count();
+            // 4. Nouvelles âmes (7 derniers jours)
+            $nouvellesAmes = Ame::where('created_at', '>=', now()->subDays(7))->count();
 
-            // 5. Fidélisés depuis la table ames
+            // 5. Fidélisés (suivi = true)
             $fidelises = Ame::where('suivi', true)->count();
 
             // 6. Visites (interactions de type 'visite')
