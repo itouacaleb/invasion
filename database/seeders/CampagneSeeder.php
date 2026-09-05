@@ -15,7 +15,7 @@ class CampagneSeeder extends Seeder
         DB::table('campagnes')->insert([
             'nom' => 'Invasion ' . $year,
             'date_debut' => Carbon::create($year, 1, 15),
-            'date_fin' => Carbon::create($year, 3, 20),
+            'date_fin' => Carbon::create($year, 12, 31), // ✅ Modifié : fin décembre
             'zone_id' => 1,
             'description' => 'Campagne Invasion des Âmes',
             'created_at' => now(),
