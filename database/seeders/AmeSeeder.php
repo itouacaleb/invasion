@@ -21,6 +21,7 @@ class AmeSeeder extends Seeder
             [
                 'nom' => 'Jean Kimbangu',
                 'telephone' => '242054512345',
+                'email' => 'jean.kimbangu@example.com', // ✅ AJOUTÉ
                 'sexe' => 'H',
                 'age' => 32,
                 'adresse' => 'Avenue Matsoua, Bacongo',
@@ -40,6 +41,7 @@ class AmeSeeder extends Seeder
             [
                 'nom' => 'Marie Loubaki',
                 'telephone' => '242055523456',
+                'email' => 'marie.loubaki@example.com', // ✅ AJOUTÉ
                 'sexe' => 'F',
                 'age' => 28,
                 'adresse' => 'Rue Loutassi, Bacongo',
@@ -59,6 +61,7 @@ class AmeSeeder extends Seeder
             [
                 'nom' => 'Marcelline Nkounkou',
                 'telephone' => '242066634567',
+                'email' => 'marcelline.nkounkou@example.com', // ✅ AJOUTÉ
                 'sexe' => 'F',
                 'age' => 45,
                 'adresse' => 'Avenue Foch, Poto-Poto',
@@ -78,6 +81,7 @@ class AmeSeeder extends Seeder
             [
                 'nom' => 'Grâce Okombi',
                 'telephone' => '242078856789',
+                'email' => 'grace.okombi@example.com', // ✅ AJOUTÉ
                 'sexe' => 'F',
                 'age' => 35,
                 'adresse' => 'Quartier 15, Talangaï',
@@ -97,6 +101,7 @@ class AmeSeeder extends Seeder
             [
                 'nom' => 'Jonathan Itoua',
                 'telephone' => '242079967890',
+                'email' => 'jonathan.itoua@example.com', // ✅ AJOUTÉ
                 'sexe' => 'H',
                 'age' => 19,
                 'adresse' => 'Quartier 20, Talangaï',
