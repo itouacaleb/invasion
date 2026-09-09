@@ -88,7 +88,6 @@ class AmeController extends Controller
                 ], 422);
             }
 
-            // Récupérer la campagne
             $campagne = Campagne::find($request->campagne_id);
             
             if (!$campagne) {
@@ -98,12 +97,10 @@ class AmeController extends Controller
                 ], 404);
             }
 
-            // ✅ CORRECTION : Validation de la date avec Carbon
             $dateConversion = $request->date_conversion 
                 ? Carbon::parse($request->date_conversion) 
                 : Carbon::now();
 
-            // ✅ Vérifier que la date est dans la période de la campagne
             if (!$campagne->isDateInPeriod($dateConversion)) {
                 return response()->json([
                     'status' => false,
@@ -122,6 +119,12 @@ class AmeController extends Controller
             $data = $request->all();
             $data['date_conversion'] = $dateConversion->toDateString();
 
+            // ✅ AJOUT : Assigner automatiquement à l'utilisateur connecté
+            // Si 'assigne_a' n'est pas fourni ou est null, on utilise l'utilisateur connecté
+            if (!isset($data['assigne_a']) || $data['assigne_a'] === null) {
+                $data['assigne_a'] = auth()->id();
+            }
+
             // Gestion de l'image
             if ($request->hasFile('image_file')) {
                 $path = $request->file('image_file')->store('images/ames', 'public');
@@ -133,8 +136,6 @@ class AmeController extends Controller
             unset($data['image_file']);
 
             $ame = Ame::create($data);
-
-            // Charger les relations pour la réponse
             $ame->load(['campagne', 'encadreur', 'cellule']);
 
             return response()->json([
@@ -158,7 +159,6 @@ class AmeController extends Controller
 
             $query = Ame::orderBy('created_at', 'desc');
 
-            // Filtrer par encadreur si l'utilisateur n'est pas admin
             $user = auth()->user();
             if ($user->role !== 'admin') {
                 $query->where('assigne_a', $user->id);
@@ -186,7 +186,6 @@ class AmeController extends Controller
         try {
             $ame = Ame::findOrFail($id);
 
-            // Vérifier que l'utilisateur a accès à cette âme
             $user = auth()->user();
             if ($user->role !== 'admin' && $ame->assigne_a != $user->id) {
                 return response()->json([
@@ -196,7 +195,6 @@ class AmeController extends Controller
                 ], 403);
             }
 
-            // Charger les relations
             $ame->load(['campagne', 'encadreur', 'cellule', 'zone', 'interactions']);
 
             return response()->json([
@@ -250,7 +248,6 @@ class AmeController extends Controller
 
             $data = $validator->validated();
 
-            // Si la campagne change, vérifier la date
             if (isset($data['campagne_id']) && $data['campagne_id'] != $ame->campagne_id) {
                 $campagne = Campagne::find($data['campagne_id']);
                 if ($campagne) {
@@ -275,16 +272,13 @@ class AmeController extends Controller
                 }
             }
 
-            // Gestion de l'image
             if ($request->hasFile('image_file')) {
-                // Supprimer l'ancienne image si elle existe
                 if ($ame->image && !filter_var($ame->image, FILTER_VALIDATE_URL)) {
                     Storage::disk('public')->delete($ame->image);
                 }
                 $path = $request->file('image_file')->store('images/ames', 'public');
                 $data['image'] = $path;
             } elseif ($request->filled('image')) {
-                // Supprimer l'ancienne image locale si on la remplace par une URL
                 if ($ame->image && !filter_var($ame->image, FILTER_VALIDATE_URL) && !filter_var($request->image, FILTER_VALIDATE_URL)) {
                     Storage::disk('public')->delete($ame->image);
                 }
@@ -294,8 +288,6 @@ class AmeController extends Controller
             unset($data['image_file']);
 
             $ame->update($data);
-
-            // Recharger les relations
             $ame->load(['campagne', 'encadreur', 'cellule']);
 
             return response()->json([
@@ -318,7 +310,6 @@ class AmeController extends Controller
         try {
             $ame = Ame::findOrFail($id);
             
-            // Supprimer l'image si elle existe et n'est pas une URL
             if ($ame->image && !filter_var($ame->image, FILTER_VALIDATE_URL)) {
                 Storage::disk('public')->delete($ame->image);
             }
@@ -340,9 +331,6 @@ class AmeController extends Controller
         }
     }
 
-    /**
-     * Récupérer les âmes par zone
-     */
     public function parZone(Request $request)
     {
         try {
