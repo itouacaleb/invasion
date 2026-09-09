@@ -46,8 +46,8 @@ class UserSeeder extends Seeder
             ],
             [
                 'nom' => 'Ilitch Edmet',
-                'email' => 'ilitchoint@gmail.com',
-                'telephone' => '068347182',
+                'email' => 'ilitchoint2@gmail.com',
+                'telephone' => '067723310',
                 'password' => Hash::make('service@2026'),
                 'role' => 'evangeliste',
                 'zone_id' => 1,
