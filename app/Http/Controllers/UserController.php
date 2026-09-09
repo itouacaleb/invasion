@@ -23,6 +23,15 @@ class UserController extends Controller
             if ($request->has('zone_id')) {
                 $query->where('zone_id', $request->zone_id);
             }
+            // ✅ AJOUT : Recherche par nom, téléphone ou email
+            if ($request->has('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('nom', 'LIKE', "%{$search}%")
+                      ->orWhere('telephone', 'LIKE', "%{$search}%")
+                      ->orWhere('email', 'LIKE', "%{$search}%");
+                });
+            }
 
             $users = $query->get();
 
@@ -46,9 +55,9 @@ class UserController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'nom' => 'required|string|max:255',
-                'email' => 'required|email|unique:users,email',
+                'email' => 'nullable|email|unique:users,email',
+                'telephone' => 'required|string|max:20|unique:users',
                 'password' => 'required|string|min:8',
-                'telephone' => 'nullable|string|max:20',
                 'role' => 'required|in:evangeliste,encadreur,admin',
                 'zone_id' => 'nullable|exists:zones,id',
             ]);
@@ -109,9 +118,9 @@ class UserController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'nom' => 'sometimes|required|string|max:255',
-                'email' => 'sometimes|required|email|unique:users,email,'.$user->id,
-                'password' => 'sometimes|string|min:8',
-                'telephone' => 'nullable|string|max:20',
+                'email' => 'nullable|email|unique:users,email,'.$user->id,
+                'telephone' => 'sometimes|required|string|max:20|unique:users,telephone,'.$user->id,
+                'password' => 'nullable|string|min:8',
                 'role' => 'sometimes|required|in:evangeliste,encadreur,admin',
                 'zone_id' => 'nullable|exists:zones,id',
             ]);
@@ -126,8 +135,10 @@ class UserController extends Controller
             }
 
             $validated = $validator->validated();
-            if (isset($validated['password'])) {
+            if (isset($validated['password']) && !empty($validated['password'])) {
                 $validated['password'] = Hash::make($validated['password']);
+            } else {
+                unset($validated['password']);
             }
 
             $user->update($validated);
@@ -151,6 +162,16 @@ class UserController extends Controller
     {
         try {
             $user = User::findOrFail($id);
+            
+            // ✅ Empêcher la suppression de son propre compte
+            if (auth()->id() == $id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Vous ne pouvez pas supprimer votre propre compte',
+                    'data' => [],
+                ], 403);
+            }
+            
             $user->delete();
 
             return response()->json([

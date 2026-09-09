@@ -14,7 +14,8 @@ use App\Http\Controllers\{
     UserController,
     ZoneController,
     TacheController,
-    DashboardController
+    DashboardController,
+    AdminDashboardController
 };
 use Illuminate\Http\Request;
 
@@ -28,7 +29,7 @@ Route::prefix('v1')->group(function () {
 
     // Zones accessibles publiquement (pour l'inscription)
     Route::prefix('zones')->controller(ZoneController::class)->group(function () {
-        Route::get('/', 'indexPublic'); // Version publique
+        Route::get('/', 'indexPublic');
     });
 
     // Routes protégées par Sanctum
@@ -47,10 +48,17 @@ Route::prefix('v1')->group(function () {
             ]);
         });
 
+        // ========== ADMIN ROUTES ==========
+        Route::prefix('admin')->middleware('auth:sanctum')->group(function () {
+            Route::get('dashboard', [AdminDashboardController::class, 'index']);
+            Route::get('users/stats', [AdminDashboardController::class, 'usersStats']);
+            Route::get('ames/stats', [AdminDashboardController::class, 'amesStats']);
+        });
+        // ========== FIN ADMIN ROUTES ==========
+
         // Routes avec préfixes
         Route::prefix('ames')->controller(AmeController::class)->group(function () {
-            Route::get('/recentes', 'recentes'); // ✅ mettre AVANT /{id}
-
+            Route::get('/recentes', 'recentes');
             Route::get('/', 'index');
             Route::post('/', 'store');
             Route::get('/{id}', 'show');
@@ -65,12 +73,12 @@ Route::prefix('v1')->group(function () {
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
         });
-        // Dans api.php
+
         Route::prefix('cartes')->group(function () {
             Route::get('ames-par-zone', [AmeController::class, 'cartesData']);
         });
-         // ✅ Dashboard (une seule route pour tout)
-    Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index']);
+
+        Route::get('/dashboard', [DashboardController::class, 'index']);
 
         Route::prefix('rapports')->group(function () {
             Route::get('fidelisation', [StatistiqueController::class, 'fidelisation']);
@@ -84,8 +92,9 @@ Route::prefix('v1')->group(function () {
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
         });
+
         Route::prefix('taches')->controller(TacheController::class)->group(function () {
-            Route::get('/recentes', 'recentes'); // ✅ avant /{id}
+            Route::get('/recentes', 'recentes');
             Route::get('/', 'index');
             Route::post('/', 'store');
             Route::get('/{id}', 'show');
@@ -125,15 +134,12 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', 'destroy');
             Route::post('mark-as-read', 'markAsRead');
         });
+
         Route::prefix('statistiques')->controller(StatistiqueController::class)->group(function () {
             Route::get('/', 'index');
             Route::post('/', 'store');
-
-            // ⚠️ Les routes fixes en premier
             Route::get('hebdomadaires', 'statsHebdomadaires');
             Route::get('mensuelles', 'statsMensuelles');
-
-            // Ensuite la route dynamique
             Route::get('/{id}', 'show');
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
@@ -147,7 +153,6 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', 'destroy');
         });
 
-        // Routes zones protégées (pour les opérations sensibles)
         Route::prefix('zones')->controller(ZoneController::class)->group(function () {
             Route::post('/', 'store');
             Route::get('/{id}', 'show');
