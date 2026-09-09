@@ -49,7 +49,7 @@ class UserSeeder extends Seeder
             [
                 'nom' => 'Dykoka Ngolo Yannick',
                 'email' => 'yannick.dykoka@example.com',
-                'telephone' => '242060578901',
+                'telephone' => '242066353662',
                 'password' => Hash::make('Admin@123'),
                 'role' => 'admin',
                 'zone_id' => null,
