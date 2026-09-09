@@ -12,7 +12,7 @@ class Ame extends Model
     protected $fillable = [
         'nom',
         'telephone',
-        'email', // ✅ AJOUTER CETTE LIGNE
+        'email',
         'sexe',
         'age',
         'adresse',
@@ -67,6 +67,12 @@ class Ame extends Model
     public function etapesValidees()
     {
         return $this->hasMany(EtapeValidee::class);
+    }
+
+    // ✅ AJOUTER LA RELATION INVERSE VERS ZONE
+    public function zone()
+    {
+        return $this->belongsTo(Zone::class);
     }
 
     // Scopes utiles

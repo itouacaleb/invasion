@@ -22,4 +22,10 @@ class Zone extends Model
     {
         return $this->hasMany(Cellule::class);
     }
+
+    // ✅ AJOUTER CETTE RELATION
+    public function ames()
+    {
+        return $this->hasMany(Ame::class);
+    }
 }
