@@ -39,6 +39,7 @@ class Ame extends Model
 
     protected $with = ['campagne', 'encadreur', 'cellule'];
 
+    // Relations
     public function campagne()
     {
         return $this->belongsTo(Campagne::class);
@@ -49,14 +50,14 @@ class Ame extends Model
         return $this->belongsTo(User::class, 'assigne_a');
     }
 
-    public function getImageUrlAttribute()
-    {
-        return $this->image ? asset('storage/' . $this->image) : null;
-    }
-
     public function cellule()
     {
         return $this->belongsTo(Cellule::class);
+    }
+
+    public function zone()
+    {
+        return $this->belongsTo(Zone::class);
     }
 
     public function interactions()
@@ -69,13 +70,37 @@ class Ame extends Model
         return $this->hasMany(EtapeValidee::class);
     }
 
-    // ✅ AJOUTER LA RELATION INVERSE VERS ZONE
-    public function zone()
+    // Accesseurs
+    public function getImageUrlAttribute()
     {
-        return $this->belongsTo(Zone::class);
+        if ($this->image) {
+            // Si c'est une URL externe, la retourner directement
+            if (filter_var($this->image, FILTER_VALIDATE_URL)) {
+                return $this->image;
+            }
+            // Sinon, c'est un chemin local
+            return asset('storage/' . $this->image);
+        }
+        return null;
     }
 
-    // Scopes utiles
+    public function getPositionAttribute()
+    {
+        if ($this->latitude && $this->longitude) {
+            return [
+                'latitude' => (float) $this->latitude,
+                'longitude' => (float) $this->longitude
+            ];
+        }
+        return null;
+    }
+
+    public function getEstLocaliseAttribute()
+    {
+        return !is_null($this->latitude) && !is_null($this->longitude);
+    }
+
+    // Scopes
     public function scopePourCampagne($query, $campagneId)
     {
         return $query->where('campagne_id', $campagneId);
@@ -91,20 +116,13 @@ class Ame extends Model
         return $query->whereNotNull('latitude')->whereNotNull('longitude');
     }
 
-    // Accesseurs
-    public function getPositionAttribute()
+    public function scopeSuivis($query)
     {
-        if ($this->latitude && $this->longitude) {
-            return [
-                'latitude' => (float)$this->latitude,
-                'longitude' => (float)$this->longitude
-            ];
-        }
-        return null;
+        return $query->where('suivi', true);
     }
 
-    public function getEstLocaliseAttribute()
+    public function scopeNonSuivis($query)
     {
-        return !is_null($this->latitude) && !is_null($this->longitude);
+        return $query->where('suivi', false);
     }
 }

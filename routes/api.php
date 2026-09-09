@@ -64,6 +64,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/{id}', 'show');
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
+            
+            // ✅ AJOUTER CETTE ROUTE
+            Route::get('/par-zone', 'parZone');
         });
 
         Route::prefix('campagnes')->controller(CampagneController::class)->group(function () {
@@ -72,6 +75,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/{id}', 'show');
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
+            
+            // ✅ AJOUTER CETTE ROUTE POUR RÉCUPÉRER LES DATES
+            Route::get('/{id}/dates', 'getDates');
         });
 
         Route::prefix('cartes')->group(function () {

@@ -49,4 +49,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Cellule::class, 'responsable_id');
     }
+
+    // ✅ AJOUTER LA RELATION INVERSE VERS ZONE
+    public function zoneRelation()
+    {
+        return $this->belongsTo(Zone::class);
+    }
 }

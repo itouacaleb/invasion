@@ -8,6 +8,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class AmeController extends Controller
 {
@@ -16,12 +17,13 @@ class AmeController extends Controller
         try {
             $query = Ame::query();
 
-            // ✅ Filtrer par encadreur si l'utilisateur n'est pas admin
+            // Filtrer par encadreur si l'utilisateur n'est pas admin
             $user = auth()->user();
             if ($user->role !== 'admin') {
                 $query->where('assigne_a', $user->id);
             }
 
+            // Filtres optionnels
             if ($request->has('campagne_id')) {
                 $query->where('campagne_id', $request->campagne_id);
             }
@@ -33,6 +35,9 @@ class AmeController extends Controller
             }
             if ($request->has('sexe')) {
                 $query->where('sexe', $request->sexe);
+            }
+            if ($request->has('type_decision')) {
+                $query->where('type_decision', $request->type_decision);
             }
 
             $ames = $query->get();
@@ -83,20 +88,41 @@ class AmeController extends Controller
                 ], 422);
             }
 
+            // Récupérer la campagne
             $campagne = Campagne::find($request->campagne_id);
-            if (
-                $request->date_conversion &&
-                ($request->date_conversion < $campagne->date_debut ||
-                    ($campagne->date_fin && $request->date_conversion > $campagne->date_fin))
-            ) {
+            
+            if (!$campagne) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Campagne non trouvée',
+                ], 404);
+            }
+
+            // ✅ CORRECTION : Validation de la date avec Carbon
+            $dateConversion = $request->date_conversion 
+                ? Carbon::parse($request->date_conversion) 
+                : Carbon::now();
+
+            // ✅ Vérifier que la date est dans la période de la campagne
+            if (!$campagne->isDateInPeriod($dateConversion)) {
                 return response()->json([
                     'status' => false,
                     'message' => 'La date de conversion doit être dans la période de la campagne',
+                    'errors' => [
+                        'date_conversion' => [
+                            'La date doit être entre ' . 
+                            $campagne->date_debut->format('d/m/Y') . 
+                            ' et ' . 
+                            ($campagne->date_fin ? $campagne->date_fin->format('d/m/Y') : 'indéfinie')
+                        ]
+                    ]
                 ], 422);
             }
 
             $data = $request->all();
+            $data['date_conversion'] = $dateConversion->toDateString();
 
+            // Gestion de l'image
             if ($request->hasFile('image_file')) {
                 $path = $request->file('image_file')->store('images/ames', 'public');
                 $data['image'] = $path;
@@ -107,6 +133,9 @@ class AmeController extends Controller
             unset($data['image_file']);
 
             $ame = Ame::create($data);
+
+            // Charger les relations pour la réponse
+            $ame->load(['campagne', 'encadreur', 'cellule']);
 
             return response()->json([
                 'status' => true,
@@ -129,7 +158,7 @@ class AmeController extends Controller
 
             $query = Ame::orderBy('created_at', 'desc');
 
-            // ✅ Filtrer par encadreur si l'utilisateur n'est pas admin
+            // Filtrer par encadreur si l'utilisateur n'est pas admin
             $user = auth()->user();
             if ($user->role !== 'admin') {
                 $query->where('assigne_a', $user->id);
@@ -157,7 +186,7 @@ class AmeController extends Controller
         try {
             $ame = Ame::findOrFail($id);
 
-            // ✅ Vérifier que l'utilisateur a accès à cette âme
+            // Vérifier que l'utilisateur a accès à cette âme
             $user = auth()->user();
             if ($user->role !== 'admin' && $ame->assigne_a != $user->id) {
                 return response()->json([
@@ -166,6 +195,9 @@ class AmeController extends Controller
                     'data' => [],
                 ], 403);
             }
+
+            // Charger les relations
+            $ame->load(['campagne', 'encadreur', 'cellule', 'zone', 'interactions']);
 
             return response()->json([
                 'status' => true,
@@ -218,29 +250,59 @@ class AmeController extends Controller
 
             $data = $validator->validated();
 
+            // Si la campagne change, vérifier la date
+            if (isset($data['campagne_id']) && $data['campagne_id'] != $ame->campagne_id) {
+                $campagne = Campagne::find($data['campagne_id']);
+                if ($campagne) {
+                    $dateConversion = isset($data['date_conversion']) 
+                        ? Carbon::parse($data['date_conversion']) 
+                        : Carbon::parse($ame->date_conversion);
+                    
+                    if (!$campagne->isDateInPeriod($dateConversion)) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'La date de conversion doit être dans la période de la campagne',
+                            'errors' => [
+                                'date_conversion' => [
+                                    'La date doit être entre ' . 
+                                    $campagne->date_debut->format('d/m/Y') . 
+                                    ' et ' . 
+                                    ($campagne->date_fin ? $campagne->date_fin->format('d/m/Y') : 'indéfinie')
+                                ]
+                            ]
+                        ], 422);
+                    }
+                }
+            }
+
+            // Gestion de l'image
             if ($request->hasFile('image_file')) {
+                // Supprimer l'ancienne image si elle existe
                 if ($ame->image && !filter_var($ame->image, FILTER_VALIDATE_URL)) {
                     Storage::disk('public')->delete($ame->image);
                 }
                 $path = $request->file('image_file')->store('images/ames', 'public');
                 $data['image'] = $path;
-            } elseif ($request->filled('image_url')) {
-                if ($ame->image && !filter_var($ame->image, FILTER_VALIDATE_URL)) {
+            } elseif ($request->filled('image')) {
+                // Supprimer l'ancienne image locale si on la remplace par une URL
+                if ($ame->image && !filter_var($ame->image, FILTER_VALIDATE_URL) && !filter_var($request->image, FILTER_VALIDATE_URL)) {
                     Storage::disk('public')->delete($ame->image);
                 }
-                $data['image'] = $request->image_url;
+                $data['image'] = $request->image;
             }
 
             unset($data['image_file']);
-            unset($data['image_url']);
 
             $ame->update($data);
+
+            // Recharger les relations
+            $ame->load(['campagne', 'encadreur', 'cellule']);
 
             return response()->json([
                 'status' => true,
                 'message' => 'Âme mise à jour avec succès',
                 'data' => $ame,
-            ]);
+            ], 200);
         } catch (Exception $e) {
             return response()->json([
                 'status' => false,
@@ -255,6 +317,12 @@ class AmeController extends Controller
     {
         try {
             $ame = Ame::findOrFail($id);
+            
+            // Supprimer l'image si elle existe et n'est pas une URL
+            if ($ame->image && !filter_var($ame->image, FILTER_VALIDATE_URL)) {
+                Storage::disk('public')->delete($ame->image);
+            }
+            
             $ame->delete();
 
             return response()->json([
@@ -268,6 +336,39 @@ class AmeController extends Controller
                 'message' => 'Erreur lors de la suppression de l\'âme',
                 'error' => $e->getMessage(),
                 'data' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer les âmes par zone
+     */
+    public function parZone(Request $request)
+    {
+        try {
+            $query = Ame::with(['zone', 'campagne']);
+
+            $user = auth()->user();
+            if ($user->role !== 'admin') {
+                $query->where('assigne_a', $user->id);
+            }
+
+            if ($request->has('zone_id')) {
+                $query->where('zone_id', $request->zone_id);
+            }
+
+            $ames = $query->get()->groupBy('zone_id');
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Âmes par zone récupérées avec succès',
+                'data' => $ames,
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Erreur lors de la récupération des âmes par zone',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
