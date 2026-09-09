@@ -44,6 +44,16 @@ class UserSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'nom' => 'Ilitch Edmet',
+                'email' => 'ilitchoint@gmail.com',
+                'telephone' => '068347182',
+                'password' => Hash::make('service@2026'),
+                'role' => 'evangeliste',
+                'zone_id' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
 
             // ✅ 3. Dykoka Ngolo Yannick - Admin (Pasteur)
             [
