@@ -36,9 +36,9 @@ class UserSeeder extends Seeder
             // ✅ 2. Ilitch Edmet - Evangeliste
             [
                 'nom' => 'Ilitch Edmet',
-                'email' => 'ilitch.edmet@example.com',
+                'email' => 'ilitchoint@gmail.com',
                 'telephone' => '068347182',
-                'password' => Hash::make('Evangeliste@123'),
+                'password' => Hash::make('service@2787'),
                 'role' => 'evangeliste',
                 'zone_id' => 1,
                 'created_at' => now(),
