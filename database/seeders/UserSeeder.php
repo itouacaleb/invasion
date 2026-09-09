@@ -33,7 +33,7 @@ class UserSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // ✅ 2. Ilitch Edmet - Evangeliste
+            // ✅ 2. Ilitch Edmet - Evangeliste (compte principal)
             [
                 'nom' => 'Ilitch Edmet',
                 'email' => 'ilitchoint@gmail.com',
@@ -44,18 +44,20 @@ class UserSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            
+            // ✅ 3. Ilitch Edmet - Gagneur d'âmes (deuxième compte)
             [
                 'nom' => 'Ilitch Edmet',
-                'email' => 'ilitchoint2@gmail.com',
+                'email' => 'ilitch.gagneur@gmail.com',
                 'telephone' => '067723310',
                 'password' => Hash::make('service@2026'),
-                'role' => 'evangeliste',
+                'role' => 'gagneur_d_ames',  // ✅ NOUVEAU RÔLE
                 'zone_id' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
 
-            // ✅ 3. Dykoka Ngolo Yannick - Admin (Pasteur)
+            // ✅ 4. Dykoka Ngolo Yannick - Admin (Pasteur)
             [
                 'nom' => 'Dykoka Ngolo Yannick',
                 'email' => 'yannick.dykoka@example.com',
@@ -71,16 +73,5 @@ class UserSeeder extends Seeder
         foreach ($users as $user) {
             User::create($user);
         }
-
-        // ✅ Supprimer la création d'utilisateurs supplémentaires
-        // $this->createAdditionalUsers(10);
-    }
-
-    /**
-     * Création d'utilisateurs supplémentaires (désactivée)
-     */
-    protected function createAdditionalUsers(int $count): void
-    {
-        // Désactivé pour garder seulement les 3 utilisateurs principaux
     }
 }
