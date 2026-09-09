@@ -37,7 +37,7 @@ class UserSeeder extends Seeder
             [
                 'nom' => 'Ilitch Edmet',
                 'email' => 'ilitch.edmet@example.com',
-                'telephone' => '242068347182',
+                'telephone' => '068347182',
                 'password' => Hash::make('Evangeliste@123'),
                 'role' => 'evangeliste',
                 'zone_id' => 1,
@@ -49,7 +49,7 @@ class UserSeeder extends Seeder
             [
                 'nom' => 'Dykoka Ngolo Yannick',
                 'email' => 'yannick.dykoka@example.com',
-                'telephone' => '242066353662',
+                'telephone' => '066353662',
                 'password' => Hash::make('Admin@123'),
                 'role' => 'admin',
                 'zone_id' => null,
