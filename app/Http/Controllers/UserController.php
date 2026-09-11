@@ -8,6 +8,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -16,14 +17,12 @@ class UserController extends Controller
         try {
             $query = User::with('zone');
 
-            // Ajout des filtres
             if ($request->has('role')) {
                 $query->where('role', $request->role);
             }
             if ($request->has('zone_id')) {
                 $query->where('zone_id', $request->zone_id);
             }
-            // ✅ AJOUT : Recherche par nom, téléphone ou email
             if ($request->has('search')) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
@@ -53,13 +52,16 @@ class UserController extends Controller
     public function store(Request $request)
     {
         try {
+            // ✅ CORRECTION : Ajouter 'gagneur_d_ames' dans la liste des rôles
             $validator = Validator::make($request->all(), [
                 'nom' => 'required|string|max:255',
                 'email' => 'nullable|email|unique:users,email',
                 'telephone' => 'required|string|max:20|unique:users',
                 'password' => 'required|string|min:8',
-                'role' => 'required|in:evangeliste,encadreur,admin',
+                'role' => 'required|in:evangeliste,encadreur,admin,gagneur_d_ames', // ✅ AJOUTÉ
                 'zone_id' => 'nullable|exists:zones,id',
+                'image' => 'nullable|string',
+                'image_file' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
             ]);
 
             if ($validator->fails()) {
@@ -74,7 +76,18 @@ class UserController extends Controller
             $validated = $validator->validated();
             $validated['password'] = Hash::make($validated['password']);
 
+            // ✅ Gestion de l'image
+            if ($request->hasFile('image_file')) {
+                $path = $request->file('image_file')->store('images/users', 'public');
+                $validated['image'] = $path;
+            } elseif ($request->filled('image')) {
+                $validated['image'] = $request->image;
+            }
+
+            unset($validated['image_file']);
+
             $user = User::create($validated);
+            $user->load('zone');
 
             return response()->json([
                 'status' => true,
@@ -116,13 +129,16 @@ class UserController extends Controller
         try {
             $user = User::findOrFail($id);
 
+            // ✅ CORRECTION : Ajouter 'gagneur_d_ames' dans la liste des rôles
             $validator = Validator::make($request->all(), [
                 'nom' => 'sometimes|required|string|max:255',
                 'email' => 'nullable|email|unique:users,email,'.$user->id,
                 'telephone' => 'sometimes|required|string|max:20|unique:users,telephone,'.$user->id,
                 'password' => 'nullable|string|min:8',
-                'role' => 'sometimes|required|in:evangeliste,encadreur,admin',
+                'role' => 'sometimes|required|in:evangeliste,encadreur,admin,gagneur_d_ames', // ✅ AJOUTÉ
                 'zone_id' => 'nullable|exists:zones,id',
+                'image' => 'nullable|string',
+                'image_file' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
             ]);
 
             if ($validator->fails()) {
@@ -141,7 +157,25 @@ class UserController extends Controller
                 unset($validated['password']);
             }
 
+            // ✅ Gestion de l'image
+            if ($request->hasFile('image_file')) {
+                // Supprimer l'ancienne image si elle existe
+                if ($user->image && !filter_var($user->image, FILTER_VALIDATE_URL)) {
+                    Storage::disk('public')->delete($user->image);
+                }
+                $path = $request->file('image_file')->store('images/users', 'public');
+                $validated['image'] = $path;
+            } elseif ($request->filled('image')) {
+                if ($user->image && !filter_var($user->image, FILTER_VALIDATE_URL)) {
+                    Storage::disk('public')->delete($user->image);
+                }
+                $validated['image'] = $request->image;
+            }
+
+            unset($validated['image_file']);
+
             $user->update($validated);
+            $user->load('zone');
 
             return response()->json([
                 'status' => true,
@@ -163,13 +197,17 @@ class UserController extends Controller
         try {
             $user = User::findOrFail($id);
             
-            // ✅ Empêcher la suppression de son propre compte
             if (auth()->id() == $id) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Vous ne pouvez pas supprimer votre propre compte',
                     'data' => [],
                 ], 403);
+            }
+            
+            // ✅ Supprimer l'image si elle existe
+            if ($user->image && !filter_var($user->image, FILTER_VALIDATE_URL)) {
+                Storage::disk('public')->delete($user->image);
             }
             
             $user->delete();
