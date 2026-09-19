@@ -12,16 +12,37 @@ use Carbon\Carbon;
 
 class AmeController extends Controller
 {
+    /**
+     * Liste des âmes
+     * 
+     * Paramètres optionnels :
+     * - mine=true : retourne uniquement les âmes de l'utilisateur connecté
+     * - campagne_id : filtrer par campagne
+     * - assigne_a : filtrer par encadreur
+     * - cellule_id : filtrer par cellule
+     * - sexe : filtrer par sexe (H/F)
+     * - type_decision : filtrer par type de décision
+     */
     public function index(Request $request)
     {
         try {
             $query = Ame::query();
-
-            // Filtrer par encadreur si l'utilisateur n'est pas admin
             $user = auth()->user();
-            if ($user->role !== 'admin') {
+
+            // ✅ SOLUTION HYBRIDE :
+            // - Si ?mine=true → uniquement les âmes de l'utilisateur
+            // - Sinon → tous voient tout (sauf les encadreurs qui ne voient que les leurs)
+            
+            $showOnlyMine = $request->has('mine') && $request->mine === 'true';
+
+            if ($showOnlyMine) {
+                // Vue personnelle : mes âmes uniquement
+                $query->where('assigne_a', $user->id);
+            } elseif ($user->role === 'encadreur') {
+                // Les encadreurs ne voient que leurs âmes assignées
                 $query->where('assigne_a', $user->id);
             }
+            // Les admins, gagneurs et évangélistes voient TOUT
 
             // Filtres optionnels
             if ($request->has('campagne_id')) {
@@ -40,12 +61,27 @@ class AmeController extends Controller
                 $query->where('type_decision', $request->type_decision);
             }
 
+            // Charger les relations
+            $query->with(['campagne', 'encadreur', 'cellule.zone']);
+
+            // Trier par date de création décroissante
+            $query->orderBy('created_at', 'desc');
+
             $ames = $query->get();
+
+            // ✅ Compter les âmes de l'utilisateur pour info
+            $myAmesCount = Ame::where('assigne_a', $user->id)->count();
+            $totalAmes = Ame::count();
 
             return response()->json([
                 'status' => true,
                 'message' => 'Liste des âmes récupérée avec succès',
                 'data' => $ames,
+                'meta' => [
+                    'my_ames_count' => $myAmesCount,
+                    'total_ames' => $totalAmes,
+                    'show_only_mine' => $showOnlyMine,
+                ],
             ], 200);
         } catch (Exception $e) {
             return response()->json([
@@ -57,6 +93,9 @@ class AmeController extends Controller
         }
     }
 
+    /**
+     * Créer une nouvelle âme
+     */
     public function store(Request $request)
     {
         try {
@@ -89,7 +128,7 @@ class AmeController extends Controller
             }
 
             $campagne = Campagne::find($request->campagne_id);
-            
+
             if (!$campagne) {
                 return response()->json([
                     'status' => false,
@@ -97,8 +136,8 @@ class AmeController extends Controller
                 ], 404);
             }
 
-            $dateConversion = $request->date_conversion 
-                ? Carbon::parse($request->date_conversion) 
+            $dateConversion = $request->date_conversion
+                ? Carbon::parse($request->date_conversion)
                 : Carbon::now();
 
             if (!$campagne->isDateInPeriod($dateConversion)) {
@@ -107,9 +146,9 @@ class AmeController extends Controller
                     'message' => 'La date de conversion doit être dans la période de la campagne',
                     'errors' => [
                         'date_conversion' => [
-                            'La date doit être entre ' . 
-                            $campagne->date_debut->format('d/m/Y') . 
-                            ' et ' . 
+                            'La date doit être entre ' .
+                            $campagne->date_debut->format('d/m/Y') .
+                            ' et ' .
                             ($campagne->date_fin ? $campagne->date_fin->format('d/m/Y') : 'indéfinie')
                         ]
                     ]
@@ -119,8 +158,7 @@ class AmeController extends Controller
             $data = $request->all();
             $data['date_conversion'] = $dateConversion->toDateString();
 
-            // ✅ AJOUT : Assigner automatiquement à l'utilisateur connecté
-            // Si 'assigne_a' n'est pas fourni ou est null, on utilise l'utilisateur connecté
+            // ✅ Assigner automatiquement à l'utilisateur connecté
             if (!isset($data['assigne_a']) || $data['assigne_a'] === null) {
                 $data['assigne_a'] = auth()->id();
             }
@@ -136,7 +174,7 @@ class AmeController extends Controller
             unset($data['image_file']);
 
             $ame = Ame::create($data);
-            $ame->load(['campagne', 'encadreur', 'cellule']);
+            $ame->load(['campagne', 'encadreur', 'cellule.zone']);
 
             return response()->json([
                 'status' => true,
@@ -152,15 +190,27 @@ class AmeController extends Controller
         }
     }
 
+    /**
+     * Dernières âmes
+     * 
+     * Paramètres optionnels :
+     * - limit : nombre d'âmes à retourner (défaut: 10)
+     * - mine=true : retourne uniquement les âmes de l'utilisateur connecté
+     */
     public function recentes(Request $request)
     {
         try {
             $limit = $request->get('limit', 10);
 
-            $query = Ame::orderBy('created_at', 'desc');
+            $query = Ame::with(['campagne', 'encadreur', 'cellule.zone'])
+                ->orderBy('created_at', 'desc');
 
             $user = auth()->user();
-            if ($user->role !== 'admin') {
+            $showOnlyMine = $request->has('mine') && $request->mine === 'true';
+
+            if ($showOnlyMine) {
+                $query->where('assigne_a', $user->id);
+            } elseif ($user->role === 'encadreur') {
                 $query->where('assigne_a', $user->id);
             }
 
@@ -181,13 +231,19 @@ class AmeController extends Controller
         }
     }
 
+    /**
+     * Afficher une âme spécifique
+     */
     public function show($id)
     {
         try {
             $ame = Ame::findOrFail($id);
 
             $user = auth()->user();
-            if ($user->role !== 'admin' && $ame->assigne_a != $user->id) {
+            
+            // ✅ Les encadreurs ne peuvent voir que leurs âmes
+            // Les autres rôles peuvent voir toutes les âmes
+            if ($user->role === 'encadreur' && $ame->assigne_a != $user->id) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Vous n\'avez pas accès à cette âme',
@@ -195,7 +251,7 @@ class AmeController extends Controller
                 ], 403);
             }
 
-            $ame->load(['campagne', 'encadreur', 'cellule', 'zone', 'interactions']);
+            $ame->load(['campagne', 'encadreur', 'cellule.zone', 'zone', 'interactions']);
 
             return response()->json([
                 'status' => true,
@@ -212,10 +268,24 @@ class AmeController extends Controller
         }
     }
 
+    /**
+     * Mettre à jour une âme
+     */
     public function update(Request $request, $id)
     {
         try {
             $ame = Ame::findOrFail($id);
+
+            $user = auth()->user();
+            
+            // ✅ Vérifier les permissions
+            if ($user->role === 'encadreur' && $ame->assigne_a != $user->id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Vous ne pouvez pas modifier cette âme',
+                    'data' => [],
+                ], 403);
+            }
 
             $validator = Validator::make($request->all(), [
                 'nom' => 'required|string|max:255',
@@ -248,22 +318,23 @@ class AmeController extends Controller
 
             $data = $validator->validated();
 
+            // Vérifier la date de conversion si la campagne change
             if (isset($data['campagne_id']) && $data['campagne_id'] != $ame->campagne_id) {
                 $campagne = Campagne::find($data['campagne_id']);
                 if ($campagne) {
-                    $dateConversion = isset($data['date_conversion']) 
-                        ? Carbon::parse($data['date_conversion']) 
+                    $dateConversion = isset($data['date_conversion'])
+                        ? Carbon::parse($data['date_conversion'])
                         : Carbon::parse($ame->date_conversion);
-                    
+
                     if (!$campagne->isDateInPeriod($dateConversion)) {
                         return response()->json([
                             'status' => false,
                             'message' => 'La date de conversion doit être dans la période de la campagne',
                             'errors' => [
                                 'date_conversion' => [
-                                    'La date doit être entre ' . 
-                                    $campagne->date_debut->format('d/m/Y') . 
-                                    ' et ' . 
+                                    'La date doit être entre ' .
+                                    $campagne->date_debut->format('d/m/Y') .
+                                    ' et ' .
                                     ($campagne->date_fin ? $campagne->date_fin->format('d/m/Y') : 'indéfinie')
                                 ]
                             ]
@@ -272,6 +343,7 @@ class AmeController extends Controller
                 }
             }
 
+            // Gestion de l'image
             if ($request->hasFile('image_file')) {
                 if ($ame->image && !filter_var($ame->image, FILTER_VALIDATE_URL)) {
                     Storage::disk('public')->delete($ame->image);
@@ -288,7 +360,7 @@ class AmeController extends Controller
             unset($data['image_file']);
 
             $ame->update($data);
-            $ame->load(['campagne', 'encadreur', 'cellule']);
+            $ame->load(['campagne', 'encadreur', 'cellule.zone']);
 
             return response()->json([
                 'status' => true,
@@ -305,15 +377,29 @@ class AmeController extends Controller
         }
     }
 
+    /**
+     * Supprimer une âme
+     */
     public function destroy($id)
     {
         try {
             $ame = Ame::findOrFail($id);
+
+            $user = auth()->user();
             
+            // ✅ Vérifier les permissions
+            if ($user->role === 'encadreur' && $ame->assigne_a != $user->id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Vous ne pouvez pas supprimer cette âme',
+                    'data' => [],
+                ], 403);
+            }
+
             if ($ame->image && !filter_var($ame->image, FILTER_VALIDATE_URL)) {
                 Storage::disk('public')->delete($ame->image);
             }
-            
+
             $ame->delete();
 
             return response()->json([
@@ -331,13 +417,18 @@ class AmeController extends Controller
         }
     }
 
+    /**
+     * Récupérer les âmes par zone
+     */
     public function parZone(Request $request)
     {
         try {
-            $query = Ame::with(['zone', 'campagne']);
+            $query = Ame::with(['zone', 'campagne', 'encadreur', 'cellule.zone']);
 
             $user = auth()->user();
-            if ($user->role !== 'admin') {
+            $showOnlyMine = $request->has('mine') && $request->mine === 'true';
+
+            if ($showOnlyMine || $user->role === 'encadreur') {
                 $query->where('assigne_a', $user->id);
             }
 
@@ -357,6 +448,48 @@ class AmeController extends Controller
                 'status' => false,
                 'message' => 'Erreur lors de la récupération des âmes par zone',
                 'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * ✅ NOUVELLE MÉTHODE : Statistiques personnelles de l'utilisateur
+     */
+    public function mesStatistiques(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            
+            $myAmes = Ame::where('assigne_a', $user->id)->count();
+            $totalAmes = Ame::count();
+            
+            $myNouvellesAmes = Ame::where('assigne_a', $user->id)
+                ->where('created_at', '>=', now()->subDays(7))
+                ->count();
+            
+            $mySuivies = Ame::where('assigne_a', $user->id)
+                ->where('suivi', true)
+                ->count();
+
+            $contribution = $totalAmes > 0 ? round(($myAmes / $totalAmes) * 100, 1) : 0;
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Mes statistiques récupérées avec succès',
+                'data' => [
+                    'mes_ames' => $myAmes,
+                    'total_ames' => $totalAmes,
+                    'mes_nouvelles_ames' => $myNouvellesAmes,
+                    'mes_ames_suivies' => $mySuivies,
+                    'ma_contribution_pourcentage' => $contribution,
+                ],
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Erreur',
+                'error' => $e->getMessage(),
+                'data' => [],
             ], 500);
         }
     }
