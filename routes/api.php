@@ -56,41 +56,51 @@ Route::prefix('v1')->group(function () {
         });
         // ========== FIN ADMIN ROUTES ==========
 
-        // Routes avec préfixes
+        // ========== AMES ROUTES ==========
         Route::prefix('ames')->controller(AmeController::class)->group(function () {
+            // ✅ Routes SPÉCIFIQUES d'abord (avant /{id})
             Route::get('/recentes', 'recentes');
-            Route::get('/', 'index');
-            Route::post('/', 'store');
-            Route::get('/{id}', 'show');
-            Route::put('/{id}', 'update');
-            Route::delete('/{id}', 'destroy');
-            
-            // ✅ AJOUTER CETTE ROUTE
             Route::get('/par-zone', 'parZone');
-        });
-
-        Route::prefix('campagnes')->controller(CampagneController::class)->group(function () {
+            Route::get('/mes-statistiques', 'mesStatistiques'); // ✅ NOUVELLE ROUTE
+            
+            // Routes CRUD
             Route::get('/', 'index');
             Route::post('/', 'store');
             Route::get('/{id}', 'show');
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
-            
-            // ✅ AJOUTER CETTE ROUTE POUR RÉCUPÉRER LES DATES
-            Route::get('/{id}/dates', 'getDates');
         });
+        // ========== FIN AMES ROUTES ==========
 
+        // ========== CAMPAGNES ROUTES ==========
+        Route::prefix('campagnes')->controller(CampagneController::class)->group(function () {
+            // ✅ Routes SPÉCIFIQUES d'abord
+            Route::get('/{id}/dates', 'getDates');
+            
+            // Routes CRUD
+            Route::get('/', 'index');
+            Route::post('/', 'store');
+            Route::get('/{id}', 'show');
+            Route::put('/{id}', 'update');
+            Route::delete('/{id}', 'destroy');
+        });
+        // ========== FIN CAMPAGNES ROUTES ==========
+
+        // ========== CARTES ROUTES ==========
         Route::prefix('cartes')->group(function () {
             Route::get('ames-par-zone', [AmeController::class, 'cartesData']);
         });
 
+        // ========== DASHBOARD ROUTES ==========
         Route::get('/dashboard', [DashboardController::class, 'index']);
 
+        // ========== RAPPORTS ROUTES ==========
         Route::prefix('rapports')->group(function () {
             Route::get('fidelisation', [StatistiqueController::class, 'fidelisation']);
             Route::get('baptemes', [StatistiqueController::class, 'baptemes']);
         });
 
+        // ========== CELLULES ROUTES ==========
         Route::prefix('cellules')->controller(CelluleController::class)->group(function () {
             Route::get('/', 'index');
             Route::post('/', 'store');
@@ -99,8 +109,12 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', 'destroy');
         });
 
+        // ========== TACHES ROUTES ==========
         Route::prefix('taches')->controller(TacheController::class)->group(function () {
+            // ✅ Routes SPÉCIFIQUES d'abord
             Route::get('/recentes', 'recentes');
+            
+            // Routes CRUD
             Route::get('/', 'index');
             Route::post('/', 'store');
             Route::get('/{id}', 'show');
@@ -108,6 +122,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', 'destroy');
         });
 
+        // ========== INTERACTIONS ROUTES ==========
         Route::prefix('interactions')->controller(InteractionController::class)->group(function () {
             Route::get('/', 'index');
             Route::post('/', 'store');
@@ -116,6 +131,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', 'destroy');
         });
 
+        // ========== PARCOURS SPIRITUELS ROUTES ==========
         Route::prefix('parcours-spirituels')->controller(ParcoursSpirituelController::class)->group(function () {
             Route::get('/', 'index');
             Route::post('/', 'store');
@@ -124,6 +140,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', 'destroy');
         });
 
+        // ========== ETAPES VALIDEES ROUTES ==========
         Route::prefix('etapes-validees')->controller(EtapeValideeController::class)->group(function () {
             Route::get('/', 'index');
             Route::post('/', 'store');
@@ -132,25 +149,34 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', 'destroy');
         });
 
+        // ========== NOTIFICATIONS ROUTES ==========
         Route::prefix('notifications')->controller(NotificationController::class)->group(function () {
+            // ✅ Routes SPÉCIFIQUES d'abord
+            Route::post('mark-as-read', 'markAsRead');
+            
+            // Routes CRUD
             Route::get('/', 'index');
             Route::post('/', 'store');
             Route::get('/{id}', 'show');
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
-            Route::post('mark-as-read', 'markAsRead');
         });
 
+        // ========== STATISTIQUES ROUTES ==========
         Route::prefix('statistiques')->controller(StatistiqueController::class)->group(function () {
-            Route::get('/', 'index');
-            Route::post('/', 'store');
+            // ✅ Routes SPÉCIFIQUES d'abord
             Route::get('hebdomadaires', 'statsHebdomadaires');
             Route::get('mensuelles', 'statsMensuelles');
+            
+            // Routes CRUD
+            Route::get('/', 'index');
+            Route::post('/', 'store');
             Route::get('/{id}', 'show');
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
         });
 
+        // ========== USERS ROUTES ==========
         Route::prefix('users')->controller(UserController::class)->group(function () {
             Route::get('/', 'index');
             Route::post('/', 'store');
@@ -159,6 +185,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', 'destroy');
         });
 
+        // ========== ZONES ROUTES ==========
         Route::prefix('zones')->controller(ZoneController::class)->group(function () {
             Route::post('/', 'store');
             Route::get('/{id}', 'show');
