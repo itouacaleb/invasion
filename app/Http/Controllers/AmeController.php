@@ -451,6 +451,21 @@ class AmeController extends Controller
             ], 500);
         }
     }
+        /**
+     * Progressions de l'âme dans le parcours biblique
+     */
+    public function progressions()
+    {
+        return $this->hasMany(ProgressionAme::class);
+    }
+
+    /**
+     * Réponses de l'âme aux questions
+     */
+    public function reponses()
+    {
+        return $this->hasMany(ReponseAme::class);
+    }
 
     /**
      * ✅ NOUVELLE MÉTHODE : Statistiques personnelles de l'utilisateur
