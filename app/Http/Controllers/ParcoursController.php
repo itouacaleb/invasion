@@ -165,10 +165,11 @@ class ParcoursController extends Controller
                     'question' => $question->question,
                     'options' => $question->options,
                     'points' => $question->points,
+                    'bonne_reponse' => $question->bonne_reponse, // ✅ AJOUTÉ
                     'deja_repondu' => $reponse !== null,
                     'reponse_donnee' => $reponse?->reponse_donnee,
                     'est_correcte' => $reponse?->est_correcte,
-                    'explication' => $reponse ? $question->explication : null,
+                    'explication' => $question->explication, // ✅ Toujours envoyé
                 ];
             });
 
