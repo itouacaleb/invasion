@@ -15,7 +15,8 @@ use App\Http\Controllers\{
     ZoneController,
     TacheController,
     DashboardController,
-    AdminDashboardController
+    AdminDashboardController,
+    ParcoursController,
 };
 use Illuminate\Http\Request;
 
@@ -61,8 +62,8 @@ Route::prefix('v1')->group(function () {
             // ✅ Routes SPÉCIFIQUES d'abord (avant /{id})
             Route::get('/recentes', 'recentes');
             Route::get('/par-zone', 'parZone');
-            Route::get('/mes-statistiques', 'mesStatistiques'); // ✅ NOUVELLE ROUTE
-            
+            Route::get('/mes-statistiques', 'mesStatistiques');
+
             // Routes CRUD
             Route::get('/', 'index');
             Route::post('/', 'store');
@@ -76,7 +77,7 @@ Route::prefix('v1')->group(function () {
         Route::prefix('campagnes')->controller(CampagneController::class)->group(function () {
             // ✅ Routes SPÉCIFIQUES d'abord
             Route::get('/{id}/dates', 'getDates');
-            
+
             // Routes CRUD
             Route::get('/', 'index');
             Route::post('/', 'store');
@@ -113,7 +114,7 @@ Route::prefix('v1')->group(function () {
         Route::prefix('taches')->controller(TacheController::class)->group(function () {
             // ✅ Routes SPÉCIFIQUES d'abord
             Route::get('/recentes', 'recentes');
-            
+
             // Routes CRUD
             Route::get('/', 'index');
             Route::post('/', 'store');
@@ -153,7 +154,7 @@ Route::prefix('v1')->group(function () {
         Route::prefix('notifications')->controller(NotificationController::class)->group(function () {
             // ✅ Routes SPÉCIFIQUES d'abord
             Route::post('mark-as-read', 'markAsRead');
-            
+
             // Routes CRUD
             Route::get('/', 'index');
             Route::post('/', 'store');
@@ -167,7 +168,7 @@ Route::prefix('v1')->group(function () {
             // ✅ Routes SPÉCIFIQUES d'abord
             Route::get('hebdomadaires', 'statsHebdomadaires');
             Route::get('mensuelles', 'statsMensuelles');
-            
+
             // Routes CRUD
             Route::get('/', 'index');
             Route::post('/', 'store');
@@ -192,5 +193,15 @@ Route::prefix('v1')->group(function () {
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
         });
+
+        // ========== PARCOURS BIBLIQUE ROUTES ==========
+        Route::prefix('parcours')->controller(ParcoursController::class)->group(function () {
+            Route::get('/niveaux/{ameId}', 'niveaux');
+            Route::get('/niveaux/{niveauId}/lecons/{ameId}', 'lecons');
+            Route::get('/lecons/{leconId}/{ameId}', 'lecon');
+            Route::post('/lecons/{leconId}/repondre', 'repondre');
+            Route::get('/progression/{ameId}', 'progression');
+        });
+        // ========== FIN PARCOURS BIBLIQUE ROUTES ==========
     });
 });
