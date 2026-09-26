@@ -7,14 +7,22 @@ use Illuminate\Database\Eloquent\Model;
 
 class EtapeValidee extends Model
 {
+    // ✅ FIX : Forcer le nom exact de la table en base
+    protected $table = 'etapes_validees';
+
     protected $fillable = [
         'ame_id',
         'parcours_spirituel_id',
         'valide_par',
         'date_validation',
-        'commentaires',   // ← manquait
+        'commentaires',
     ];
 
+    protected $casts = [
+        'date_validation' => 'date',
+    ];
+
+    // ============ RELATIONS ============
     public function ame()
     {
         return $this->belongsTo(Ame::class);
