@@ -306,6 +306,145 @@ class StatistiqueController extends Controller
     }
 
 
+     public function dashboard(Request $request)
+    {
+        try {
+            // ========== 1. STATISTIQUES DES ÂMES ==========
+            $totalAmes = \App\Models\Ame::count();
+            
+            // Baptisés = type_decision "Première décision"
+            $baptises = \App\Models\Ame::where('type_decision', 'Première décision')
+                ->orWhere('type_decision', 'Baptême')
+                ->count();
+            
+            // Fidélisés = suivi actif
+            $fidelises = \App\Models\Ame::where('suivi', true)->count();
+            
+            // Nouvelles âmes (7 derniers jours)
+            $nouvellesAmes = \App\Models\Ame::where('created_at', '>=', now()->subDays(7))
+                ->count();
+
+            // ========== 2. PARCOURS SPIRITUEL ==========
+            $totalProgressions = \App\Models\ProgressionAme::count();
+            $niveauxCompletes = \App\Models\ProgressionAme::where('statut', 'complete')->count();
+            $niveauxEnCours = \App\Models\ProgressionAme::where('statut', 'en_cours')->count();
+            $etapesValidees = \App\Models\EtapeValidee::count();
+
+            // ========== 3. INTERACTIONS ==========
+            $totalInteractions = \App\Models\Interaction::count();
+            $visites = \App\Models\Interaction::where('type', 'visite')->count();
+            $appels = \App\Models\Interaction::where('type', 'appel')->count();
+            $prieres = \App\Models\Interaction::where('type', 'priere')->count();
+
+            // ========== 4. TÂCHES ==========
+            $tachesEnAttente = \App\Models\Tache::where('statut', 'en_attente')->count();
+            $tachesTerminees = \App\Models\Tache::where('statut', 'terminee')->count();
+
+            // ========== 5. CAMPAGNES ==========
+            $campagnesActives = \App\Models\Campagne::where(function ($q) {
+                $q->where('date_fin', '>=', now())->orWhereNull('date_fin');
+            })->count();
+
+            // ========== 6. ÉVOLUTION MENSUELLE (12 derniers mois) ==========
+            $moisFr = [
+                1 => 'Jan', 2 => 'Fév', 3 => 'Mar', 4 => 'Avr',
+                5 => 'Mai', 6 => 'Juin', 7 => 'Juil', 8 => 'Aoû',
+                9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Déc'
+            ];
+
+            $conversionsParMois = [];
+            for ($i = 11; $i >= 0; $i--) {
+                $date = now()->subMonths($i);
+                $count = \App\Models\Ame::whereMonth('created_at', $date->month)
+                    ->whereYear('created_at', $date->year)
+                    ->count();
+                $conversionsParMois[] = [
+                    'mois' => $moisFr[$date->month],
+                    'annee' => $date->year,
+                    'conversions' => $count,
+                ];
+            }
+
+            // ========== 7. RÉPARTITION PAR TYPE DE DÉCISION ==========
+            $parTypeDecision = \App\Models\Ame::select('type_decision', 
+                    \DB::raw('COUNT(*) as total'))
+                ->groupBy('type_decision')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'type' => $item->type_decision ?? 'Non défini',
+                        'total' => $item->total,
+                    ];
+                });
+
+            // ========== 8. DERNIÈRE STATISTIQUE OFFICIELLE (si existe) ==========
+            $derniereStatistique = \App\Models\Statistique::with('campagne')
+                ->orderBy('date_generation', 'desc')
+                ->first();
+
+            // ========== 9. TAUX DE BAPTÊME / FIDÉLISATION ==========
+            $tauxBapteme = $totalAmes > 0 ? round(($baptises / $totalAmes) * 100, 1) : 0;
+            $tauxFidelisation = $totalAmes > 0 ? round(($fidelises / $totalAmes) * 100, 1) : 0;
+
+            // ========== RÉPONSE AGRÉGÉE ==========
+            return response()->json([
+                'status' => true,
+                'message' => 'Statistiques du dashboard récupérées',
+                'data' => [
+                    // Données principales (utilisées par la vue Flutter)
+                    'total_ames' => $totalAmes,
+                    'baptises' => $baptises,
+                    'fidelises' => $fidelises,
+                    'nouvelles_ames' => $nouvellesAmes,
+                    'taux_bapteme' => $tauxBapteme,
+                    'taux_fidelisation' => $tauxFidelisation,
+                    'date_generation' => now()->toDateString(),
+
+                    // Parcours spirituel
+                    'parcours' => [
+                        'total_progressions' => $totalProgressions,
+                        'niveaux_completes' => $niveauxCompletes,
+                        'niveaux_en_cours' => $niveauxEnCours,
+                        'etapes_validees' => $etapesValidees,
+                    ],
+
+                    // Interactions
+                    'interactions' => [
+                        'total' => $totalInteractions,
+                        'visites' => $visites,
+                        'appels' => $appels,
+                        'prieres' => $prieres,
+                    ],
+
+                    // Tâches
+                    'taches' => [
+                        'en_attente' => $tachesEnAttente,
+                        'terminees' => $tachesTerminees,
+                    ],
+
+                    // Campagnes
+                    'campagnes_actives' => $campagnesActives,
+
+                    // Évolution
+                    'evolution_mensuelle' => $conversionsParMois,
+
+                    // Répartition
+                    'par_type_decision' => $parTypeDecision,
+
+                    // Dernière stat officielle (peut être null)
+                    'derniere_statistique' => $derniereStatistique,
+                ],
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Erreur lors du calcul des statistiques',
+                'error' => $e->getMessage(),
+                'data' => [],
+            ], 500);
+        }
+    }
+
     // Pour les conversions mensuelles
     public function statsMensuelles(Request $request)
     {

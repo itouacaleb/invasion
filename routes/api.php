@@ -165,7 +165,10 @@ Route::prefix('v1')->group(function () {
 
         // ========== STATISTIQUES ROUTES ==========
         Route::prefix('statistiques')->controller(StatistiqueController::class)->group(function () {
-            // ✅ Routes SPÉCIFIQUES d'abord
+            // ✅ Route DASHBOARD agrégée EN PREMIER (avant /{id})
+            Route::get('dashboard', 'dashboard');
+
+            // ✅ Routes SPÉCIFIQUES ensuite
             Route::get('hebdomadaires', 'statsHebdomadaires');
             Route::get('mensuelles', 'statsMensuelles');
 
