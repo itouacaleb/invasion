@@ -16,7 +16,7 @@ class User extends Authenticatable
         'password',
         'telephone',
         'role',
-        'zone_id'
+        'zone_id',
     ];
 
     protected $hidden = [
@@ -24,7 +24,8 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    // Relations
+    // ============ RELATIONS ============
+
     public function zone()
     {
         return $this->belongsTo(Zone::class);
@@ -50,9 +51,19 @@ class User extends Authenticatable
         return $this->hasMany(Cellule::class, 'responsable_id');
     }
 
-    // ✅ AJOUTER LA RELATION INVERSE VERS ZONE
     public function zoneRelation()
     {
         return $this->belongsTo(Zone::class);
+    }
+
+    // ✅ NOUVEAU : conversations et messages
+    public function conversations()
+    {
+        return $this->hasMany(Conversation::class);
+    }
+
+    public function messages()
+    {
+        return $this->morphMany(Message::class, 'expediteur');
     }
 }

@@ -8,20 +8,13 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
 
 class AmeController extends Controller
 {
     /**
      * Liste des âmes
-     * 
-     * Paramètres optionnels :
-     * - mine=true : retourne uniquement les âmes de l'utilisateur connecté
-     * - campagne_id : filtrer par campagne
-     * - assigne_a : filtrer par encadreur
-     * - cellule_id : filtrer par cellule
-     * - sexe : filtrer par sexe (H/F)
-     * - type_decision : filtrer par type de décision
      */
     public function index(Request $request)
     {
@@ -29,20 +22,13 @@ class AmeController extends Controller
             $query = Ame::query();
             $user = auth()->user();
 
-            // ✅ SOLUTION HYBRIDE :
-            // - Si ?mine=true → uniquement les âmes de l'utilisateur
-            // - Sinon → tous voient tout (sauf les encadreurs qui ne voient que les leurs)
-            
             $showOnlyMine = $request->has('mine') && $request->mine === 'true';
 
             if ($showOnlyMine) {
-                // Vue personnelle : mes âmes uniquement
                 $query->where('assigne_a', $user->id);
             } elseif ($user->role === 'encadreur') {
-                // Les encadreurs ne voient que leurs âmes assignées
                 $query->where('assigne_a', $user->id);
             }
-            // Les admins, gagneurs et évangélistes voient TOUT
 
             // Filtres optionnels
             if ($request->has('campagne_id')) {
@@ -61,15 +47,11 @@ class AmeController extends Controller
                 $query->where('type_decision', $request->type_decision);
             }
 
-            // Charger les relations
             $query->with(['campagne', 'encadreur', 'cellule.zone']);
-
-            // Trier par date de création décroissante
             $query->orderBy('created_at', 'desc');
 
             $ames = $query->get();
 
-            // ✅ Compter les âmes de l'utilisateur pour info
             $myAmesCount = Ame::where('assigne_a', $user->id)->count();
             $totalAmes = Ame::count();
 
@@ -94,7 +76,7 @@ class AmeController extends Controller
     }
 
     /**
-     * Créer une nouvelle âme
+     * Créer une nouvelle âme (avec PIN par défaut 00000)
      */
     public function store(Request $request)
     {
@@ -163,6 +145,10 @@ class AmeController extends Controller
                 $data['assigne_a'] = auth()->id();
             }
 
+            // ✅ PIN par défaut silencieux (00000) - connu uniquement des admins
+            $data['password'] = Hash::make('00000');
+            $data['pin_modifie'] = false;
+
             // Gestion de l'image
             if ($request->hasFile('image_file')) {
                 $path = $request->file('image_file')->store('images/ames', 'public');
@@ -192,10 +178,6 @@ class AmeController extends Controller
 
     /**
      * Dernières âmes
-     * 
-     * Paramètres optionnels :
-     * - limit : nombre d'âmes à retourner (défaut: 10)
-     * - mine=true : retourne uniquement les âmes de l'utilisateur connecté
      */
     public function recentes(Request $request)
     {
@@ -240,9 +222,7 @@ class AmeController extends Controller
             $ame = Ame::findOrFail($id);
 
             $user = auth()->user();
-            
-            // ✅ Les encadreurs ne peuvent voir que leurs âmes
-            // Les autres rôles peuvent voir toutes les âmes
+
             if ($user->role === 'encadreur' && $ame->assigne_a != $user->id) {
                 return response()->json([
                     'status' => false,
@@ -277,8 +257,7 @@ class AmeController extends Controller
             $ame = Ame::findOrFail($id);
 
             $user = auth()->user();
-            
-            // ✅ Vérifier les permissions
+
             if ($user->role === 'encadreur' && $ame->assigne_a != $user->id) {
                 return response()->json([
                     'status' => false,
@@ -386,8 +365,7 @@ class AmeController extends Controller
             $ame = Ame::findOrFail($id);
 
             $user = auth()->user();
-            
-            // ✅ Vérifier les permissions
+
             if ($user->role === 'encadreur' && $ame->assigne_a != $user->id) {
                 return response()->json([
                     'status' => false,
@@ -451,37 +429,22 @@ class AmeController extends Controller
             ], 500);
         }
     }
-        /**
-     * Progressions de l'âme dans le parcours biblique
-     */
-    public function progressions()
-    {
-        return $this->hasMany(ProgressionAme::class);
-    }
 
     /**
-     * Réponses de l'âme aux questions
-     */
-    public function reponses()
-    {
-        return $this->hasMany(ReponseAme::class);
-    }
-
-    /**
-     * ✅ NOUVELLE MÉTHODE : Statistiques personnelles de l'utilisateur
+     * Statistiques personnelles de l'utilisateur
      */
     public function mesStatistiques(Request $request)
     {
         try {
             $user = auth()->user();
-            
+
             $myAmes = Ame::where('assigne_a', $user->id)->count();
             $totalAmes = Ame::count();
-            
+
             $myNouvellesAmes = Ame::where('assigne_a', $user->id)
                 ->where('created_at', '>=', now()->subDays(7))
                 ->count();
-            
+
             $mySuivies = Ame::where('assigne_a', $user->id)
                 ->where('suivi', true)
                 ->count();
@@ -505,6 +468,56 @@ class AmeController extends Controller
                 'message' => 'Erreur',
                 'error' => $e->getMessage(),
                 'data' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * ✅ NOUVEAU : Réinitialise le PIN d'une âme à 00000.
+     * POST /api/v1/admin/ames/{id}/reset-pin
+     *
+     * Accessible uniquement aux admins et évangélistes.
+     */
+    public function resetPin($id)
+    {
+        try {
+            $user = auth()->user();
+
+            // ✅ Vérifie les permissions
+            if (!in_array($user->role, ['admin', 'evangeliste'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Seuls les admins et évangélistes peuvent réinitialiser un PIN.',
+                ], 403);
+            }
+
+            $ame = Ame::findOrFail($id);
+
+            // ✅ Réinitialise le PIN à 00000
+            $ame->update([
+                'password' => Hash::make('00000'),
+                'pin_modifie' => false,
+            ]);
+
+            // ✅ Déconnecte l'âme si elle était connectée (sécurité)
+            $ame->tokens()->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'PIN réinitialisé. Communiquez le code "00000" à l\'âme.',
+                'data' => [
+                    'ame_id' => $ame->id,
+                    'nom' => $ame->nom,
+                    'telephone' => $ame->telephone,
+                    'pin_modifie' => false,
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Erreur lors de la réinitialisation',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

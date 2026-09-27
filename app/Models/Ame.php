@@ -2,22 +2,27 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
-class Ame extends Model
+class Ame extends Authenticatable
 {
-    use HasFactory;
+    use HasFactory, HasApiTokens;
 
     protected $fillable = [
         'nom',
         'telephone',
         'email',
+        'password',
+        'pin_modifie',
+        'derniere_connexion',
         'sexe',
         'age',
         'adresse',
         'date_conversion',
         'campagne_id',
+        'zone_id',
         'type_decision',
         'latitude',
         'longitude',
@@ -28,6 +33,11 @@ class Ame extends Model
         'derniere_interaction',
     ];
 
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
     protected $casts = [
         'date_conversion' => 'date',
         'age' => 'integer',
@@ -35,11 +45,14 @@ class Ame extends Model
         'longitude' => 'decimal:7',
         'derniere_interaction' => 'date',
         'suivi' => 'boolean',
+        'pin_modifie' => 'boolean',
+        'derniere_connexion' => 'datetime',
     ];
 
     protected $with = ['campagne', 'encadreur', 'cellule'];
 
-    // Relations
+    // ============ RELATIONS ============
+
     public function campagne()
     {
         return $this->belongsTo(Campagne::class);
@@ -70,15 +83,35 @@ class Ame extends Model
         return $this->hasMany(EtapeValidee::class);
     }
 
-    // Accesseurs
+    public function progressions()
+    {
+        return $this->hasMany(ProgressionAme::class);
+    }
+
+    public function reponses()
+    {
+        return $this->hasMany(ReponseAme::class);
+    }
+
+    // ✅ NOUVEAU : conversations et messages
+    public function conversations()
+    {
+        return $this->hasMany(Conversation::class);
+    }
+
+    public function messages()
+    {
+        return $this->morphMany(Message::class, 'expediteur');
+    }
+
+    // ============ ACCESSORS ============
+
     public function getImageUrlAttribute()
     {
         if ($this->image) {
-            // Si c'est une URL externe, la retourner directement
             if (filter_var($this->image, FILTER_VALIDATE_URL)) {
                 return $this->image;
             }
-            // Sinon, c'est un chemin local
             return asset('storage/' . $this->image);
         }
         return null;
@@ -100,7 +133,8 @@ class Ame extends Model
         return !is_null($this->latitude) && !is_null($this->longitude);
     }
 
-    // Scopes
+    // ============ SCOPES ============
+
     public function scopePourCampagne($query, $campagneId)
     {
         return $query->where('campagne_id', $campagneId);
