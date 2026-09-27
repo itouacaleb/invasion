@@ -42,8 +42,9 @@ class AdminChatController extends Controller
                 ->recentes()
                 ->get();
 
-            // Conversations orphelines (à prendre)
+            // ✅ Conversations orphelines destinées à CET admin uniquement
             $orphanConversations = Conversation::orphelines()
+                ->where('user_id', $admin->id)
                 ->with(['ame', 'dernierMessage'])
                 ->recentes()
                 ->get();
@@ -106,8 +107,9 @@ class AdminChatController extends Controller
 
             $ame = Ame::findOrFail($ameId);
 
-            // Trouve la conversation active de l'âme
+            // ✅ Trouve la conversation de CET admin avec l'âme
             $conversation = Conversation::where('ame_id', $ame->id)
+                ->where('user_id', $admin->id)
                 ->orderBy('dernier_message_at', 'desc')
                 ->first();
 
@@ -198,7 +200,9 @@ class AdminChatController extends Controller
 
             $ame = Ame::findOrFail($ameId);
 
+            // ✅ Trouve LA conversation de CET admin avec l'âme
             $conversation = Conversation::where('ame_id', $ame->id)
+                ->where('user_id', $admin->id)
                 ->orderBy('dernier_message_at', 'desc')
                 ->first();
 
@@ -271,7 +275,9 @@ class AdminChatController extends Controller
 
             $ame = Ame::findOrFail($ameId);
 
+            // ✅ Trouve LA conversation de CET admin avec l'âme
             $conversation = Conversation::where('ame_id', $ame->id)
+                ->where('user_id', $admin->id)
                 ->orderBy('dernier_message_at', 'desc')
                 ->first();
 
@@ -345,7 +351,10 @@ class AdminChatController extends Controller
             $mesNonLus = Conversation::pourReferent($admin->id)
                 ->sum('messages_non_lus_user');
 
-            $orphanCount = Conversation::orphelines()->count();
+            // ✅ Orphelines destinées à CET admin uniquement
+            $orphanCount = Conversation::orphelines()
+                ->where('user_id', $admin->id)
+                ->count();
 
             return response()->json([
                 'status' => true,
