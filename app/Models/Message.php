@@ -13,6 +13,7 @@ class Message extends Model
         'conversation_id',
         'expediteur_type',
         'expediteur_id',
+        'broadcast_group_id',
         'contenu',
         'lu',
         'lu_at',
@@ -73,5 +74,15 @@ class Message extends Model
             return $user ? $user->nom : 'Responsable inconnu';
         }
         return 'Inconnu';
+    }
+
+    /**
+     * Récupère tous les messages d'un broadcast groupé
+     */
+    public static function parBroadcastGroup(string $groupId)
+    {
+        return self::where('broadcast_group_id', $groupId)
+            ->with('conversation.user')
+            ->get();
     }
 }

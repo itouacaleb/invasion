@@ -12,6 +12,8 @@ class Conversation extends Model
     protected $fillable = [
         'ame_id',
         'user_id',
+        'pris_en_charge_par',
+        'pris_en_charge_at',
         'dernier_message_at',
         'messages_non_lus_ame',
         'messages_non_lus_user',
@@ -19,6 +21,7 @@ class Conversation extends Model
 
     protected $casts = [
         'dernier_message_at' => 'datetime',
+        'pris_en_charge_at' => 'datetime',
         'messages_non_lus_ame' => 'integer',
         'messages_non_lus_user' => 'integer',
     ];
@@ -33,6 +36,11 @@ class Conversation extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function referent()
+    {
+        return $this->belongsTo(User::class, 'pris_en_charge_par');
     }
 
     public function messages()
@@ -57,6 +65,16 @@ class Conversation extends Model
         return $query->where('user_id', $userId);
     }
 
+    public function scopePourReferent($query, int $userId)
+    {
+        return $query->where('pris_en_charge_par', $userId);
+    }
+
+    public function scopeOrphelines($query)
+    {
+        return $query->whereNull('pris_en_charge_par');
+    }
+
     public function scopeRecentes($query)
     {
         return $query->orderBy('dernier_message_at', 'desc');
@@ -73,6 +91,71 @@ class Conversation extends Model
             ['ame_id' => $ameId, 'user_id' => $userId],
             ['dernier_message_at' => now()]
         );
+    }
+
+    /**
+     * Récupère la conversation active d'une âme (peu importe l'admin)
+     */
+    public static function conversationActiveAme(int $ameId): ?self
+    {
+        return self::where('ame_id', $ameId)
+            ->whereNotNull('pris_en_charge_par')
+            ->orderBy('dernier_message_at', 'desc')
+            ->first();
+    }
+
+    /**
+     * La conversation est-elle prise en charge ?
+     */
+    public function estPriseEnCharge(): bool
+    {
+        return !is_null($this->pris_en_charge_par);
+    }
+
+    /**
+     * La conversation est-elle orpheline (aucun référent) ?
+     */
+    public function estOrpheline(): bool
+    {
+        return is_null($this->pris_en_charge_par);
+    }
+
+    /**
+     * L'admin donné est-il le référent ?
+     */
+    public function estReferent(int $userId): bool
+    {
+        return $this->pris_en_charge_par === $userId;
+    }
+
+    /**
+     * Prendre en charge la conversation
+     */
+    public function prendreEnCharge(int $userId): bool
+    {
+        if ($this->estPriseEnCharge() && $this->pris_en_charge_par !== $userId) {
+            return false;
+        }
+
+        $this->update([
+            'user_id' => $userId,
+            'pris_en_charge_par' => $userId,
+            'pris_en_charge_at' => now(),
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Réassigne la conversation à un autre admin (superadmin)
+     */
+    public function reassigner(int $newUserId): void
+    {
+        $this->update([
+            'user_id' => $newUserId,
+            'pris_en_charge_par' => $newUserId,
+            'pris_en_charge_at' => now(),
+        ]);
     }
 
     /**

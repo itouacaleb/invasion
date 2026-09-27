@@ -17,11 +17,13 @@ use App\Http\Controllers\{
     DashboardController,
     AdminDashboardController,
     ParcoursController,
-    // ✅ NOUVEAUX contrôleurs (Âme)
+    // ✅ Contrôleurs Âme
     AmeAuthController,
     AmeParcoursController,
     MessageController,
     ContactController,
+    // ✅ Chat Admin
+    AdminChatController,
 };
 use Illuminate\Http\Request;
 
@@ -31,35 +33,30 @@ Route::prefix('v1')->group(function () {
     // 🔓 ROUTES PUBLIQUES
     // ═══════════════════════════════════════════════════════════
 
-    // Auth User (encadreurs, évangélistes, admins)
     Route::prefix('auth')->controller(AuthController::class)->group(function () {
         Route::post('register', 'register');
         Route::post('login', 'login');
         Route::post('reset-password', 'resetPassword');
     });
 
-    // Zones publiques
     Route::prefix('zones')->controller(ZoneController::class)->group(function () {
         Route::get('/', 'indexPublic');
     });
 
-    // ✅ Auth Âme (public) - login par téléphone + PIN
     Route::prefix('ame-auth')->controller(AmeAuthController::class)->group(function () {
         Route::post('check-phone', 'checkPhone');
         Route::post('login', 'login');
     });
 
     // ═══════════════════════════════════════════════════════════
-    // 🔐 ROUTES USER (Sanctum) - encadreurs, évangélistes, admins
+    // 🔐 ROUTES USER (Sanctum)
     // ═══════════════════════════════════════════════════════════
     Route::middleware('auth:sanctum')->group(function () {
 
-        // Auth User
         Route::prefix('auth')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
         });
 
-        // Utilisateur courant
         Route::get('user', function (Request $request) {
             return response()->json([
                 'status' => true,
@@ -69,25 +66,33 @@ Route::prefix('v1')->group(function () {
         });
 
         // ═══════════════════════════════════════════════════════
-        // ADMIN ROUTES
+        // 💬 ADMIN CHAT
+        // ═══════════════════════════════════════════════════════
+        Route::prefix('admin/chat')->controller(AdminChatController::class)->group(function () {
+            Route::get('inbox', 'inbox');
+            Route::get('non-lus', 'nonLus');
+            Route::get('ames/{ameId}', 'messages');
+            Route::post('ames/{ameId}/prendre', 'prendre');
+            Route::post('ames/{ameId}/repondre', 'repondre');
+        });
+
+        // ═══════════════════════════════════════════════════════
+        // ADMIN
         // ═══════════════════════════════════════════════════════
         Route::prefix('admin')->group(function () {
             Route::get('dashboard', [AdminDashboardController::class, 'index']);
             Route::get('users/stats', [AdminDashboardController::class, 'usersStats']);
             Route::get('ames/stats', [AdminDashboardController::class, 'amesStats']);
-
-            // ✅ Réinitialisation du PIN d'une âme
             Route::post('ames/{id}/reset-pin', [AmeController::class, 'resetPin']);
         });
 
         // ═══════════════════════════════════════════════════════
-        // AMES ROUTES (côté encadreurs/admins)
+        // AMES
         // ═══════════════════════════════════════════════════════
         Route::prefix('ames')->controller(AmeController::class)->group(function () {
             Route::get('/recentes', 'recentes');
             Route::get('/par-zone', 'parZone');
             Route::get('/mes-statistiques', 'mesStatistiques');
-
             Route::get('/', 'index');
             Route::post('/', 'store');
             Route::get('/{id}', 'show');
@@ -231,7 +236,7 @@ Route::prefix('v1')->group(function () {
         });
 
         // ═══════════════════════════════════════════════════════
-        // PARCOURS BIBLIQUE (côté user - vue de l'encadreur)
+        // PARCOURS BIBLIQUE (vue encadreur)
         // ═══════════════════════════════════════════════════════
         Route::prefix('parcours')->controller(ParcoursController::class)->group(function () {
             Route::get('/niveaux/{ameId}', 'niveaux');
@@ -243,18 +248,18 @@ Route::prefix('v1')->group(function () {
     });
 
     // ═══════════════════════════════════════════════════════════
-    // 🔐 ROUTES ÂME (Sanctum + Middleware ame.auth)
+    // 🔐 ROUTES ÂME (Sanctum + ame.auth)
     // ═══════════════════════════════════════════════════════════
     Route::middleware(['auth:sanctum', 'ame.auth'])->group(function () {
 
-        // ─── Auth Âme (actions après connexion) ───
+        // ─── Auth Âme ───
         Route::prefix('ame-auth')->controller(AmeAuthController::class)->group(function () {
             Route::get('me', 'me');
             Route::post('logout', 'logout');
             Route::post('set-pin', 'setPin');
         });
 
-        // ─── Parcours Spirituel (côté âme) ───
+        // ─── Parcours Spirituel ───
         Route::prefix('ame/parcours')->controller(AmeParcoursController::class)->group(function () {
             Route::get('niveaux', 'niveaux');
             Route::get('niveaux/{niveauId}/lecons', 'lecons');
@@ -263,15 +268,14 @@ Route::prefix('v1')->group(function () {
             Route::get('progression', 'progression');
         });
 
-        // ─── Messages (côté âme) ───
-        Route::prefix('ame/messages')->controller(MessageController::class)->group(function () {
-            Route::get('conversations', 'conversations');
+        // ─── Chat Admin (broadcast intelligent) ───
+        Route::prefix('ame/chat')->controller(MessageController::class)->group(function () {
+            Route::get('admin', 'chatAdmin');
+            Route::post('admin/envoyer', 'envoyerChatAdmin');
             Route::get('non-lus', 'nonLus');
-            Route::post('envoyer', 'envoyer');
-            Route::get('{userId}', 'messages');
         });
 
-        // ─── Contact (responsables disponibles) ───
+        // ─── Contact (liste des responsables) ───
         Route::prefix('ame/contact')->controller(ContactController::class)->group(function () {
             Route::get('responsables', 'responsables');
             Route::get('responsables/{userId}', 'show');
