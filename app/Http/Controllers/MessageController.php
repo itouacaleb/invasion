@@ -13,9 +13,6 @@ use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
-    /**
-     * Récupère l'âme connectée.
-     */
     private function ameConnectee(Request $request): ?Ame
     {
         $user = $request->user();
@@ -23,12 +20,11 @@ class MessageController extends Controller
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 💬 CHAT ADMIN (côté âme)
+    // 💬 CHAT ADMIN (broadcast intelligent)
     // ═══════════════════════════════════════════════════════════
 
     /**
      * GET /api/v1/ame/chat/admin
-     * Charge la conversation de l'âme (messages + info référent)
      */
     public function chatAdmin(Request $request)
     {
@@ -41,10 +37,10 @@ class MessageController extends Controller
                 ], 401);
             }
 
-            // Récupère la conversation la plus récente de l'âme
+            // ✅ FIX : on retire "messages.expediteur" (relation morphTo mal eager-loadée)
             $conversation = Conversation::where('ame_id', $ame->id)
                 ->orderBy('dernier_message_at', 'desc')
-                ->with(['referent', 'messages.expediteur'])
+                ->with(['referent', 'messages'])
                 ->first();
 
             if (!$conversation) {
@@ -67,7 +63,7 @@ class MessageController extends Controller
                         && $msg->expediteur_id === $ame->id,
                     'expediteur_nom' => $msg->expediteur_type === 'ame'
                         ? null
-                        : $msg->nom_expediteur,
+                        : $msg->nom_expediteur,   // ✅ le getter fait le lookup
                     'created_at' => $msg->created_at->toIso8601String(),
                 ];
             });
@@ -107,9 +103,6 @@ class MessageController extends Controller
 
     /**
      * POST /api/v1/ame/chat/admin/envoyer
-     * Envoie un message :
-     *   - Si conv active avec référent → envoi direct au référent
-     *   - Sinon → broadcast à tous les admins
      */
     public function envoyerChatAdmin(Request $request)
     {
@@ -134,11 +127,9 @@ class MessageController extends Controller
                 ], 422);
             }
 
-            // ✅ 1. Une conversation active existe-t-elle ?
             $conversationActive = Conversation::conversationActiveAme($ame->id);
 
             if ($conversationActive) {
-                // ─── CAS 1 : Envoi direct au référent ───
                 $message = Message::create([
                     'conversation_id' => $conversationActive->id,
                     'expediteur_type' => 'ame',
@@ -164,7 +155,6 @@ class MessageController extends Controller
                 ], 201);
             }
 
-            // ─── CAS 2 : BROADCAST à tous les admins ───
             $admins = User::whereIn('role', ['admin', 'evangeliste'])->get();
 
             if ($admins->isEmpty()) {
@@ -229,7 +219,6 @@ class MessageController extends Controller
 
     /**
      * GET /api/v1/ame/chat/non-lus
-     * Compteur de messages non lus côté âme
      */
     public function nonLus(Request $request)
     {
