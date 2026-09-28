@@ -24,6 +24,7 @@ use App\Http\Controllers\{
     ContactController,
     // ✅ Chat Admin
     AdminChatController,
+    publicController
 };
 use Illuminate\Http\Request;
 
@@ -46,6 +47,11 @@ Route::prefix('v1')->group(function () {
     Route::prefix('ame-auth')->controller(AmeAuthController::class)->group(function () {
         Route::post('check-phone', 'checkPhone');
         Route::post('login', 'login');
+    });
+        // ✅ Routes publiques (visiteur, sans authentification)
+    Route::prefix('public')->controller(PublicController::class)->group(function () {
+        Route::get('eglise', 'eglise');
+        Route::post('inscription', 'inscription');
     });
 
     // ═══════════════════════════════════════════════════════════
