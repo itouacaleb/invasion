@@ -24,7 +24,7 @@ use App\Http\Controllers\{
     ContactController,
     // ✅ Chat Admin
     AdminChatController,
-    publicController
+    PublicController
 };
 use Illuminate\Http\Request;
 
