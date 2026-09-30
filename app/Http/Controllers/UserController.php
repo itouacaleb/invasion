@@ -52,13 +52,12 @@ class UserController extends Controller
     public function store(Request $request)
     {
         try {
-            // ✅ CORRECTION : Ajouter 'gagneur_d_ames' dans la liste des rôles
             $validator = Validator::make($request->all(), [
                 'nom' => 'required|string|max:255',
                 'email' => 'nullable|email|unique:users,email',
                 'telephone' => 'required|string|max:20|unique:users',
                 'password' => 'required|string|min:8',
-                'role' => 'required|in:evangeliste,encadreur,admin,gagneur_d_ames', // ✅ AJOUTÉ
+                'role' => 'required|in:evangeliste,encadreur,admin,gagneur_d_ames',
                 'zone_id' => 'nullable|exists:zones,id',
                 'image' => 'nullable|string',
                 'image_file' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
@@ -76,7 +75,7 @@ class UserController extends Controller
             $validated = $validator->validated();
             $validated['password'] = Hash::make($validated['password']);
 
-            // ✅ Gestion de l'image
+            // Gestion de l'image
             if ($request->hasFile('image_file')) {
                 $path = $request->file('image_file')->store('images/users', 'public');
                 $validated['image'] = $path;
@@ -129,13 +128,12 @@ class UserController extends Controller
         try {
             $user = User::findOrFail($id);
 
-            // ✅ CORRECTION : Ajouter 'gagneur_d_ames' dans la liste des rôles
             $validator = Validator::make($request->all(), [
                 'nom' => 'sometimes|required|string|max:255',
                 'email' => 'nullable|email|unique:users,email,'.$user->id,
                 'telephone' => 'sometimes|required|string|max:20|unique:users,telephone,'.$user->id,
                 'password' => 'nullable|string|min:8',
-                'role' => 'sometimes|required|in:evangeliste,encadreur,admin,gagneur_d_ames', // ✅ AJOUTÉ
+                'role' => 'sometimes|required|in:evangeliste,encadreur,admin,gagneur_d_ames',
                 'zone_id' => 'nullable|exists:zones,id',
                 'image' => 'nullable|string',
                 'image_file' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
@@ -157,9 +155,8 @@ class UserController extends Controller
                 unset($validated['password']);
             }
 
-            // ✅ Gestion de l'image
+            // Gestion de l'image
             if ($request->hasFile('image_file')) {
-                // Supprimer l'ancienne image si elle existe
                 if ($user->image && !filter_var($user->image, FILTER_VALIDATE_URL)) {
                     Storage::disk('public')->delete($user->image);
                 }
@@ -196,7 +193,7 @@ class UserController extends Controller
     {
         try {
             $user = User::findOrFail($id);
-            
+
             if (auth()->id() == $id) {
                 return response()->json([
                     'status' => false,
@@ -204,12 +201,11 @@ class UserController extends Controller
                     'data' => [],
                 ], 403);
             }
-            
-            // ✅ Supprimer l'image si elle existe
+
             if ($user->image && !filter_var($user->image, FILTER_VALIDATE_URL)) {
                 Storage::disk('public')->delete($user->image);
             }
-            
+
             $user->delete();
 
             return response()->json([
@@ -223,6 +219,83 @@ class UserController extends Controller
                 'message' => 'Erreur lors de la suppression de l\'utilisateur',
                 'error' => $e->getMessage(),
                 'data' => [],
+            ], 500);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 🔑 Admin modifie le mot de passe d'un utilisateur
+    // PUT /api/v1/users/{id}/password
+    // ═══════════════════════════════════════════════════════════
+    public function changeUserPassword(Request $request, $id)
+    {
+        try {
+            // 1. Vérifier que l'utilisateur connecté est admin
+            $currentUser = auth()->user();
+            if (!$currentUser || $currentUser->role !== 'admin') {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Seul un administrateur peut modifier les mots de passe.',
+                    'data'    => [],
+                ], 403);
+            }
+
+            // 2. Valider
+            $validator = Validator::make($request->all(), [
+                'new_password' => 'required|string|min:6|confirmed',
+            ], [
+                'new_password.required'  => 'Le nouveau mot de passe est requis.',
+                'new_password.min'       => 'Le mot de passe doit contenir au moins 6 caractères.',
+                'new_password.confirmed' => 'Les deux mots de passe ne correspondent pas.',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Erreur de validation',
+                    'errors'  => $validator->errors(),
+                    'data'    => [],
+                ], 422);
+            }
+
+            // 3. Trouver l'utilisateur cible
+            $user = User::find($id);
+            if (!$user) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Utilisateur introuvable.',
+                    'data'    => [],
+                ], 404);
+            }
+
+            // 4. Empêcher un admin de modifier son propre mot de passe ici
+            if ($currentUser->id == $user->id) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Utilisez votre profil pour modifier votre propre mot de passe.',
+                    'data'    => [],
+                ], 403);
+            }
+
+            // 5. Mettre à jour
+            $user->password = Hash::make($request->new_password);
+            $user->save();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Mot de passe de '.$user->nom.' modifié avec succès.',
+                'data'    => [
+                    'user_id' => $user->id,
+                    'nom'     => $user->nom,
+                ],
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Erreur lors du changement de mot de passe',
+                'error'   => $e->getMessage(),
+                'data'    => [],
             ], 500);
         }
     }

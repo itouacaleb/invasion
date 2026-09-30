@@ -56,7 +56,7 @@ class User extends Authenticatable
         return $this->belongsTo(Zone::class);
     }
 
-    // ✅ NOUVEAU : conversations et messages
+    // ✅ conversations et messages
     public function conversations()
     {
         return $this->hasMany(Conversation::class);
