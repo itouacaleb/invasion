@@ -48,7 +48,8 @@ Route::prefix('v1')->group(function () {
         Route::post('check-phone', 'checkPhone');
         Route::post('login', 'login');
     });
-        // ✅ Routes publiques (visiteur, sans authentification)
+
+    // ✅ Routes publiques (visiteur, sans authentification)
     Route::prefix('public')->controller(PublicController::class)->group(function () {
         Route::get('eglise', 'eglise');
         Route::post('inscription', 'inscription');
@@ -173,9 +174,24 @@ Route::prefix('v1')->group(function () {
         });
 
         // ═══════════════════════════════════════════════════════
-        // PARCOURS SPIRITUELS
+        // 📚 PARCOURS SPIRITUELS (Admin : Niveaux + Leçons + Questions)
+        // ⚠️ ORDRE IMPORTANT : leçons/questions AVANT {id}
         // ═══════════════════════════════════════════════════════
         Route::prefix('parcours-spirituels')->controller(ParcoursSpirituelController::class)->group(function () {
+
+            // ─── LEÇONS (doivent être AVANT /{id}) ───
+            Route::get('/{parcoursId}/lecons', 'lecons');
+            Route::post('/lecons', 'storeLecon');
+            Route::put('/lecons/{id}', 'updateLecon');
+            Route::delete('/lecons/{id}', 'destroyLecon');
+
+            // ─── QUESTIONS (doivent être AVANT /{id}) ───
+            Route::get('/lecons/{leconId}/questions', 'questions');
+            Route::post('/questions', 'storeQuestion');
+            Route::put('/questions/{id}', 'updateQuestion');
+            Route::delete('/questions/{id}', 'destroyQuestion');
+
+            // ─── NIVEAUX (route générique /{id} EN DERNIER) ───
             Route::get('/', 'index');
             Route::post('/', 'store');
             Route::get('/{id}', 'show');
@@ -224,13 +240,14 @@ Route::prefix('v1')->group(function () {
         // USERS
         // ═══════════════════════════════════════════════════════
         Route::prefix('users')->controller(UserController::class)->group(function () {
-    Route::get('/', 'index');
-    Route::post('/', 'store');
-    Route::get('/{id}', 'show');
-    Route::put('/{id}', 'update');
-    Route::delete('/{id}', 'destroy');
-    Route::put('/{id}/password', 'changeUserPassword');
-});
+            Route::get('/', 'index');
+            Route::post('/', 'store');
+            Route::get('/{id}', 'show');
+            Route::put('/{id}', 'update');
+            Route::delete('/{id}', 'destroy');
+            Route::put('/{id}/password', 'changeUserPassword');
+        });
+
         // ═══════════════════════════════════════════════════════
         // ZONES
         // ═══════════════════════════════════════════════════════
@@ -242,7 +259,7 @@ Route::prefix('v1')->group(function () {
         });
 
         // ═══════════════════════════════════════════════════════
-        // PARCOURS BIBLIQUE (vue encadreur)
+        // PARCOURS BIBLIQUE (vue encadreur / mobile)
         // ═══════════════════════════════════════════════════════
         Route::prefix('parcours')->controller(ParcoursController::class)->group(function () {
             Route::get('/niveaux/{ameId}', 'niveaux');
